@@ -18,15 +18,16 @@
 package io.github.townyadvanced.flagwar.listeners;
 
 import com.palmergames.bukkit.towny.event.actions.TownyActionEvent;
+import com.palmergames.bukkit.towny.exceptions.NotRegisteredException;
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockBurnEvent;
-import org.bukkit.event.block.BlockPistonExtendEvent;
-import org.bukkit.event.block.BlockPistonRetractEvent;
+import org.bukkit.event.block.*;
 
 import com.palmergames.bukkit.towny.Towny;
 import com.palmergames.bukkit.towny.event.actions.TownyBuildEvent;
@@ -36,12 +37,30 @@ import com.palmergames.bukkit.towny.object.WorldCoord;
 import com.palmergames.bukkit.towny.object.PlayerCache.TownBlockStatus;
 import io.github.townyadvanced.flagwar.FlagWar;
 import io.github.townyadvanced.flagwar.config.FlagWarConfig;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.HashMap;
+import java.util.UUID;
+
+
+enum warState // sopho enum
+{
+    noFlag,
+    preFlag,
+    flag
+}
 
 /**
  * Listens for interactions with Blocks, then runs a check if qualified.
  * Used for flag protections and triggering CellAttackEvents.
  */
 public class FlagWarBlockListener implements Listener {
+    HashMap<UUID, warState> activeFlags = new HashMap<>(); // sopho hashmap
+
+
     /** Retains the {@link Towny} instance, after construction.  */
     private Towny towny;
 
@@ -56,6 +75,31 @@ public class FlagWarBlockListener implements Listener {
         }
     }
 
+    /***
+     * the next function was written by sopho in order to allow preflagging.
+     */
+
+    @EventHandler
+    public void onPotentialBannerPlace(TownyBuildEvent e) {
+        if (e.getBlock().getBlockData().getMaterial() == Material.BLACK_BANNER)
+        {
+            Block banner = e.getBlock();
+            if (e.getTownBlock().getTownOrNull().isAllowedToWar() && activeFlags.get(e.getTownBlock().getTownOrNull().getUUID()) != warState.preFlag)
+            {
+                activeFlags.put(e.getTownBlock().getTownOrNull().getUUID(), warState.preFlag);
+                e.getPlayer().sendMessage("TOWNY: You have begun a pre-flag state.");
+                BukkitTask task = new BukkitRunnable()
+                {
+                    @Override
+                    public void run() {
+                        activeFlags.put(e.getTownBlock().getTownOrNull().getUUID(), warState.flag);
+                        e.getPlayer().sendMessage("TOWNY: You have begun a flag state.");
+                    }
+                }.runTaskLater(towny, 200);
+            }
+        }
+    }
+
     /**
      * Check if the {@link Player} from {@link TownyBuildEvent#getPlayer()} is attempting to build inside enemy lands,
      * and if so, {@link #tryCallCellAttack(TownyActionEvent, Player, Block, WorldCoord)}.
@@ -64,13 +108,14 @@ public class FlagWarBlockListener implements Listener {
      */
     @EventHandler (priority = EventPriority.HIGH)
     @SuppressWarnings("unused")
-    public void onFlagWarFlagPlace(final TownyBuildEvent townyBuildEvent) {
+    public void onFlagWarFlagPlace(final TownyBuildEvent townyBuildEvent) throws NotRegisteredException {
         if (townyBuildEvent.getTownBlock() == null
             || !townyBuildEvent.getTownBlock().getWorld().isWarAllowed()
             || !townyBuildEvent.getTownBlock().getTownOrNull().isAllowedToWar()
             || !FlagWarConfig.isAllowingAttacks()
-            || !townyBuildEvent.getMaterial().equals(FlagWarConfig.getFlagBaseMaterial())) {
-
+            || !townyBuildEvent.getMaterial().equals(FlagWarConfig.getFlagBaseMaterial())
+            || activeFlags.get(townyBuildEvent.getTownBlock().getTown().getUUID()) != warState.flag) // sopho check
+        {
             return;
         }
 

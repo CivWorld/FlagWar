@@ -30,7 +30,6 @@ import org.bukkit.entity.Player;
  *  FlagWar Public API.
  */
 public final class FlagWarAPI {
-
     private FlagWarAPI() {
         super();
     }
