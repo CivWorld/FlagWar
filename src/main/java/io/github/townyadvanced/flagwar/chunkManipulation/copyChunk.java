@@ -1,0 +1,60 @@
+package io.github.townyadvanced.flagwar.chunkManipulation;
+
+import com.palmergames.bukkit.towny.object.Town;
+import org.bukkit.*;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
+
+import java.io.*;
+import java.util.ArrayList;
+
+public class copyChunk {
+    JavaPlugin plugin = JavaPlugin.getProvidingPlugin(this.getClass());
+
+
+    public void copyChunks(World world, Town town) {
+
+        ArrayList<ChunkSnapshot> snapshots = new ArrayList<>();
+
+        for (var tb : town.getTownBlocks()) {
+            snapshots.add(world.getChunkAt(tb.getX(), tb.getZ()).getChunkSnapshot());
+        }
+
+        for (var thisSnap : snapshots) {
+
+            String[] materials = new String[16 * 16 * 384];
+            String[] blockDatas = new String[16 * 16 * 384];
+
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    for (int y = -64; y < 320; y++) {
+                        int ny = y + 64; // it's going to otherwise be out of bounds because y is negative
+
+                        if  (thisSnap.getBlockType(x,y,z) != Material.AIR )
+                        {
+                            materials[x + (z * 16) + (ny * 16 * 16)] = thisSnap.getBlockType(x, y, z).toString();
+                            blockDatas[x + (z * 16) + (ny * 16 * 16)] = thisSnap.getBlockData(x, y, z).getAsString();
+                        }
+                    }
+                }
+
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        File chunkFile = new File(plugin.getDataFolder(), "chunks/" + thisSnap.getX() + "_" + thisSnap.getZ());
+                        chunkFile.getParentFile().mkdirs();
+
+                        try (FileOutputStream fos = new FileOutputStream(chunkFile);
+                             ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+                            oos.writeObject(materials);
+                            oos.writeObject(blockDatas);
+
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }.runTaskAsynchronously(plugin);
+            }
+        }
+    }
+}
