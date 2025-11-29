@@ -8,7 +8,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.io.*;
 import java.util.ArrayList;
 
-public class copyChunk {
+public class CopyChunk {
     JavaPlugin plugin = JavaPlugin.getProvidingPlugin(this.getClass());
 
 

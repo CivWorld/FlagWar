@@ -8,13 +8,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.*;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 
 
-public class pasteChunk {
+public class PasteChunk {
 
     JavaPlugin plugin = JavaPlugin.getProvidingPlugin(this.getClass());
 
@@ -101,6 +99,11 @@ public class pasteChunk {
                     {
                         thisBlock.setType(Material.getMaterial(pendingChunk.getMaterials()[i]));
                         thisBlock.setBlockData(Bukkit.createBlockData(pendingChunk.getBlockDatas()[i]));
+                    }
+                    else
+                    {
+                        thisBlock.setType(Material.AIR);
+                        thisBlock.setBlockData(Material.AIR.createBlockData());
                     }
                 }
             }

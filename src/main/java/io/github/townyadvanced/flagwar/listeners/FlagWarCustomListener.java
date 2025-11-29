@@ -37,12 +37,10 @@ import com.palmergames.bukkit.towny.object.WorldCoord;
 import io.github.townyadvanced.flagwar.FlagWar;
 import io.github.townyadvanced.flagwar.FlagWarAPI;
 import io.github.townyadvanced.flagwar.config.FlagWarConfig;
-import io.github.townyadvanced.flagwar.events.CellAttackCanceledEvent;
-import io.github.townyadvanced.flagwar.events.CellAttackEvent;
+import io.github.townyadvanced.flagwar.events.*;
 import io.github.townyadvanced.flagwar.i18n.Translate;
 import io.github.townyadvanced.flagwar.objects.CellUnderAttack;
-import io.github.townyadvanced.flagwar.events.CellDefendedEvent;
-import io.github.townyadvanced.flagwar.events.CellWonEvent;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -192,7 +190,10 @@ public class FlagWarCustomListener implements Listener {
             }
 
             // Defender loses townblock
-            transferOrUnclaimOrKeepTownblock(attackingTown, townBlock, defendingTown);
+            // transferOrUnclaimOrKeepTownblock(attackingTown, townBlock, defendingTown);
+
+            // checks if this is the homeblock.
+            if (townBlock.isHomeBlock()) {Bukkit.getServer().getPluginManager().callEvent(new WarEndEvent(defendingTown, attackingNation, defendingTown.getNationOrNull(), WarEndEvent.WarEndReason.homeBlockCellWon));}
 
             // Cleanup
             towny.updateCache(worldCoord);

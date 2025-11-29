@@ -22,8 +22,10 @@ import com.palmergames.bukkit.towny.event.actions.TownyActionEvent;
 import com.palmergames.bukkit.towny.exceptions.NotRegisteredException;
 import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
-import io.github.townyadvanced.flagwar.chunkManipulation.copyChunk;
-import io.github.townyadvanced.flagwar.chunkManipulation.pasteChunk;
+import io.github.townyadvanced.flagwar.chunkManipulation.CopyChunk;
+import io.github.townyadvanced.flagwar.chunkManipulation.PasteChunk;
+import io.github.townyadvanced.flagwar.events.WarEndEvent;
+import io.github.townyadvanced.flagwar.events.WarStartEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
@@ -41,22 +43,20 @@ import com.palmergames.bukkit.towny.object.WorldCoord;
 import com.palmergames.bukkit.towny.object.PlayerCache.TownBlockStatus;
 import io.github.townyadvanced.flagwar.FlagWar;
 import io.github.townyadvanced.flagwar.config.FlagWarConfig;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.event.player.PlayerChangedMainHandEvent;
 import org.bukkit.event.player.PlayerChatEvent;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitWorker;
 
 import java.util.HashMap;
 import java.util.UUID;
 
 
-enum warState // sopho enum
+enum warState
 {
     noFlag,
     preFlag,
     flag
 }
-
 
 /**
  * Listens for interactions with Blocks, then runs a check if qualified.
@@ -64,24 +64,10 @@ enum warState // sopho enum
  */
 public class FlagWarBlockListener implements Listener {
     HashMap<UUID, warState> activeFlags = new HashMap<>();
-
-    copyChunk copyChunk = new copyChunk();
-    pasteChunk pasteChunk = new pasteChunk();
+    HashMap<UUID, Integer> taskIDs = new HashMap<>();
 
     /** Retains the {@link Towny} instance, after construction.  */
     private Towny towny;
-
-    @EventHandler
-    public void onChat(PlayerChatEvent e)
-    {
-        if (e.getMessage().equalsIgnoreCase("fixtown"))
-        {
-            pasteChunk.pasteChunks(TownyAPI.getInstance().getResident("goldenARTS").getPlayer().getWorld(), TownyAPI.getInstance().getTown("village"));
-        }
-    }
-
-
-
 
     /**
      * Constructs the FlagWarBlockListener, setting {@link #towny}.
@@ -98,10 +84,8 @@ public class FlagWarBlockListener implements Listener {
     public void onPotentialBannerPlace(TownyBuildEvent e) {
         if (!e.isInWilderness())
         {
-            e.getPlayer().sendMessage("Attempting to war?");
             Town victimTown = e.getTownBlock().getTownOrNull();
             Resident enemy = TownyAPI.getInstance().getResident(e.getPlayer());
-
 
             if (Tag.BANNERS.isTagged(e.getBlock().getType())
                 && victimTown != null
@@ -111,10 +95,9 @@ public class FlagWarBlockListener implements Listener {
                 && activeFlags.get(victimTown.getUUID()) != warState.flag)
             {
                 e.setCancelled(false);
+                Bukkit.getServer().getPluginManager().callEvent(new WarStartEvent(victimTown, enemy.getNationOrNull(), victimTown.getNationOrNull()));
                 activeFlags.put(victimTown.getUUID(), warState.preFlag);
                 e.getPlayer().sendMessage("TOWNY: You have begun a pre-flag state.");
-                copyChunk.copyChunks(enemy.getPlayer().getWorld(), victimTown);
-                Bukkit.getServer().broadcastMessage(enemy.getTownOrNull().getName() + " has declared war on " + victimTown.getName() + ".");
 
                 new BukkitRunnable()
                 {
@@ -125,17 +108,24 @@ public class FlagWarBlockListener implements Listener {
                     }
                 }.runTaskLater(towny, 200);
 
-                new BukkitRunnable()
+                int taskID = new BukkitRunnable()
                 {
                     @Override
                     public void run() {
                         activeFlags.put(victimTown.getUUID(), warState.noFlag);
-                        e.getPlayer().sendMessage("The war has ended (theoretically).");
-                        pasteChunk.pasteChunks(enemy.getPlayer().getWorld(), victimTown);
+                        Bukkit.getServer().getPluginManager().callEvent(new WarEndEvent(victimTown, enemy.getNationOrNull(), victimTown.getNationOrNull(), WarEndEvent.WarEndReason.timerRanOut));
                     }
-                }.runTaskLater(towny, 400);
+                }.runTaskLater(towny, 2000).getTaskId();
+                taskIDs.put(victimTown.getUUID(), taskID);
             }
         }
+    }
+
+    @EventHandler
+    public void onWarEnd(WarEndEvent e)
+    {
+        Bukkit.getScheduler().cancelTask(taskIDs.get(e.getAttackedTown().getUUID()));
+        activeFlags.remove(e.getAttackedTown().getUUID());
     }
 
     /**

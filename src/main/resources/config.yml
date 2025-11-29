@@ -165,3 +165,7 @@ warzone:
 extra:
     # If enabled, show additional debug messages as warnings. Recommended keeping these disabled unless requested.
     debug: false
+
+# Everything beyond this point was written by another development team working on CivWorld.
+activeWars:
+

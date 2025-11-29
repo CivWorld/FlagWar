@@ -44,11 +44,7 @@ import io.github.townyadvanced.flagwar.events.CellDefendedEvent;
 import io.github.townyadvanced.flagwar.events.CellWonEvent;
 import io.github.townyadvanced.flagwar.i18n.LocaleUtil;
 import io.github.townyadvanced.flagwar.i18n.Translate;
-import io.github.townyadvanced.flagwar.listeners.FlagWarBlockListener;
-import io.github.townyadvanced.flagwar.listeners.FlagWarCustomListener;
-import io.github.townyadvanced.flagwar.listeners.FlagWarEntityListener;
-import io.github.townyadvanced.flagwar.listeners.WarzoneListener;
-import io.github.townyadvanced.flagwar.listeners.OutlawListener;
+import io.github.townyadvanced.flagwar.listeners.*;
 import io.github.townyadvanced.flagwar.objects.Cell;
 import io.github.townyadvanced.flagwar.objects.CellUnderAttack;
 
@@ -121,6 +117,8 @@ public class FlagWar extends JavaPlugin {
     private WarzoneListener warzoneListener;
     /** Holds instance of the {@link OutlawListener}. */
     private OutlawListener outlawListener;
+    /** Holds instance of the {@link WarListener}. */
+    private WarListener warListener;
 
     /**
      * Initializes the Scheduler object based on whether we're using Folia/Paper or Spigot/Bukkit.
@@ -241,6 +239,7 @@ public class FlagWar extends JavaPlugin {
         PLUGIN_MANAGER.registerEvents(flagWarEntityListener, this);
         PLUGIN_MANAGER.registerEvents(warzoneListener, this);
         PLUGIN_MANAGER.registerEvents(outlawListener, this);
+        PLUGIN_MANAGER.registerEvents(warListener, this);
         FW_LOGGER.log(Level.INFO, () -> Translate.from("startup.events.registered"));
     }
 
@@ -252,6 +251,7 @@ public class FlagWar extends JavaPlugin {
         flagWarEntityListener = new FlagWarEntityListener();
         warzoneListener = new WarzoneListener();
         outlawListener = new OutlawListener();
+        warListener = new WarListener();
         FW_LOGGER.log(Level.INFO, () -> Translate.from("startup.listeners.initialized"));
     }
 
