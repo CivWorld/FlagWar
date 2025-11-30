@@ -36,11 +36,6 @@ public class PasteChunk {
             z = Z;
         }
 
-
-        public PendingChunk() {
-
-        }
-
         public int getX() {
             return x;
         }

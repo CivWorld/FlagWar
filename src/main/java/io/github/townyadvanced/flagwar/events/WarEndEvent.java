@@ -28,12 +28,12 @@ public class WarEndEvent extends Event implements Cancellable {
     @Override
     public @NotNull HandlerList getHandlers() {return h;}
     public static @NotNull HandlerList getHandlerList() {return h;}
+    public enum WarEndReason {homeBlockCellWon, timerRanOut}
 
     Town attackedTown;
     Nation attackingNation;
     Nation defendingNation;
     boolean cancelled = false;
-    public enum WarEndReason {homeBlockCellWon, timerRanOut}
     WarEndReason warEndReason;
 
     public WarEndEvent(Town attackedTown, Nation attackingNation, Nation defendingNation, WarEndReason warEndReason) {this.attackedTown = attackedTown; this.attackingNation = attackingNation; this.defendingNation =  defendingNation; this.warEndReason = warEndReason;}

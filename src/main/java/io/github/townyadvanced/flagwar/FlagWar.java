@@ -410,6 +410,14 @@ public class FlagWar extends JavaPlugin {
     }
 
     static void attackDefended(final Player player, final CellUnderAttack cell) {
+
+        if (WarListener.warInfos.get(TownyAPI.getInstance().getTown(cell.getFlagBaseBlock().getLocation()).getUUID()).getCurrentFlag().isForceFielded())
+        {
+            WarListener.warInfos.get(TownyAPI.getInstance().getTown(cell.getFlagBaseBlock().getLocation()).getUUID()).getCurrentFlag().setForceFielded(false);
+            Bukkit.getServer().broadcastMessage("Forcefield destroyed!");
+            return;
+        }
+
         var cellDefendedEvent = new CellDefendedEvent(player, cell);
         PLUGIN_MANAGER.callEvent(cellDefendedEvent);
         cell.cancel();

@@ -18,6 +18,7 @@ package io.github.townyadvanced.flagwar.events;
 
 import com.palmergames.bukkit.towny.object.Nation;
 import com.palmergames.bukkit.towny.object.Town;
+import com.palmergames.bukkit.towny.object.TownBlock;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
@@ -25,9 +26,12 @@ import org.jetbrains.annotations.NotNull;
 
 public class WarStartEvent extends Event implements Cancellable {
     private static final HandlerList h = new HandlerList();
+
     @Override
     public @NotNull HandlerList getHandlers() {return h;}
     public static @NotNull HandlerList getHandlerList() {return h;}
+
+
 
     Town attackedTown;
     Nation attackingNation;
