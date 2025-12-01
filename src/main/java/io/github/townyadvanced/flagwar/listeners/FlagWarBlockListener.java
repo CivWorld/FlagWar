@@ -106,7 +106,7 @@ public class FlagWarBlockListener implements Listener {
                         activeFlags.put(victimTown.getUUID(), warState.flag);
                         e.getPlayer().sendMessage("TOWNY: You have begun a flag state.");
                     }
-                }.runTaskLater(towny, 200);
+                }.runTaskLater(towny, 40);
 
                 int taskID = new BukkitRunnable()
                 {

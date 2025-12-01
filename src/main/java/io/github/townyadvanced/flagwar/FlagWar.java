@@ -72,6 +72,7 @@ import org.bukkit.event.Cancellable;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
 /**
  * The main class of the TownyAdvanced: FlagWar addon. Houses core functionality.
@@ -403,18 +404,38 @@ public class FlagWar extends JavaPlugin {
     }
 
     static void attackWon(final CellUnderAttack cell) {
-        var cellWonEvent = new CellWonEvent(cell);
-        PLUGIN_MANAGER.callEvent(cellWonEvent);
-        cell.cancel();
-        removeCellUnderAttack(cell);
+        Town town = TownyAPI.getInstance().getTown(cell.getFlagBaseBlock().getLocation());
+        WarListener.FlagInfo currentFlag = WarListener.warInfos.get(town.getUUID()).getCurrentFlag();
+            Bukkit.getServer().broadcastMessage("Extra time of " + (currentFlag.getExtraTicks()/20) + " begins now!");
+            cell.setUnderExtraTime(true);
+            new BukkitRunnable()
+            {
+                @Override
+                public void run()
+                {
+                    cell.setUnderExtraTime(false);
+                    var cellWonEvent = new CellWonEvent(cell);
+                    PLUGIN_MANAGER.callEvent(cellWonEvent);
+                    cell.cancel();
+                    removeCellUnderAttack(cell);
+                }
+            }.runTaskLater(plugin, currentFlag.getExtraTicks());
+
+        //var cellWonEvent = new CellWonEvent(cell);
+        //PLUGIN_MANAGER.callEvent(cellWonEvent);
+        //cell.cancel();
+        //removeCellUnderAttack(cell);
     }
 
     static void attackDefended(final Player player, final CellUnderAttack cell) {
 
-        if (WarListener.warInfos.get(TownyAPI.getInstance().getTown(cell.getFlagBaseBlock().getLocation()).getUUID()).getCurrentFlag().isForceFielded())
+        Town town = TownyAPI.getInstance().getTown(cell.getFlagBaseBlock().getLocation());
+        int lives = WarListener.warInfos.get(town.getUUID()).getCurrentFlag().getActualExtraLives();
+
+        if (lives > 0)
         {
-            WarListener.warInfos.get(TownyAPI.getInstance().getTown(cell.getFlagBaseBlock().getLocation()).getUUID()).getCurrentFlag().setForceFielded(false);
-            Bukkit.getServer().broadcastMessage("Forcefield destroyed!");
+            WarListener.warInfos.get(town.getUUID()).getCurrentFlag().setActualExtraLives(lives-1);
+            player.sendMessage("Forcefield destroyed! There are " + lives + " lives left!");
             return;
         }
 

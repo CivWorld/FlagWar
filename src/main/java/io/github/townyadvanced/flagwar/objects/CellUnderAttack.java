@@ -47,6 +47,8 @@ import java.util.logging.Logger;
  **/
 public class CellUnderAttack extends Cell {
 
+    private boolean underExtraTime = false;
+
     /** Holds an instance of FlagWar's logger. */
     private static final Logger LOGGER = FlagWar.getInstance().getLogger();
     /** The TaskScheduler used to schedule attacks and holograms. */
@@ -450,4 +452,8 @@ public class CellUnderAttack extends Cell {
     public boolean isImmutableBlock(final Block block) {
         return isPartOfBeacon(block) || isFlagBase(block) || isFlagLight(block);
     }
+
+    public boolean isUnderExtraTime() {return underExtraTime;}
+    public void setUnderExtraTime(boolean underExtraTime) {this.underExtraTime = underExtraTime;}
+
 }

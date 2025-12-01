@@ -45,7 +45,7 @@ public class CellAttackThread extends TimerTask {
     public void run() {
 
         cell.changeFlag();
-        if (cell.hasEnded()) {
+        if (cell.hasEnded() && !cell.isUnderExtraTime()) {
             FlagWar.attackWon(cell);
         }
     }
