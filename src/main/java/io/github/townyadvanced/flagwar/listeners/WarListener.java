@@ -17,10 +17,8 @@
 package io.github.townyadvanced.flagwar.listeners;
 
 import com.palmergames.bukkit.towny.TownyAPI;
-import com.palmergames.bukkit.towny.object.Nation;
-import com.palmergames.bukkit.towny.object.Resident;
-import com.palmergames.bukkit.towny.object.Town;
-import com.palmergames.bukkit.towny.object.TownBlock;
+import com.palmergames.bukkit.towny.object.*;
+import com.palmergames.bukkit.towny.utils.TownRuinUtil;
 import io.github.townyadvanced.flagwar.chunkManipulation.CopyChunk;
 import io.github.townyadvanced.flagwar.chunkManipulation.PasteChunk;
 import io.github.townyadvanced.flagwar.events.*;
@@ -42,6 +40,12 @@ import java.util.UUID;
 
 public class WarListener implements Listener {
 
+    enum FlagState
+    {
+        preFlag,
+        flag,
+        postFlag // in case the game needs to store more information after a war, such as whether the town is invincible or ruined
+    }
     public class FlagInfo {
         private Resident flagPlacer;
         private int potentialExtraLives = 2; // if 2 then 4 gold for an extra life, if 1 then 16, if 0 you can't do shit.
@@ -73,7 +77,6 @@ public class WarListener implements Listener {
         public int getExtraTicks() {return extraTicks;}
         public void setExtraTicks(int extraTicks) {this.extraTicks = extraTicks;}
 
-
         public void reset() // resets the flag information such that there is no active cell.
         {
             currentTownBlock = null;
@@ -89,20 +92,29 @@ public class WarListener implements Listener {
         private final Town attackedTown;
         private final Nation attackingNation;
         private final Nation defendingNation;
+        private final Resident initialMayor;
         private FlagInfo currentFlag;
+        FlagState currentFlagState;
+
 
         public WarInfo(Town attackedTown, Nation attackingNation, Nation defendingNation) {
             this.attackedTown = attackedTown;
             this.attackingNation = attackingNation;
             this.defendingNation = defendingNation;
+            this.initialMayor = attackedTown.getMayor();
+            currentFlagState = FlagState.preFlag;
             currentFlag = null;
         }
+
+        public Resident getInitialMayor() {return initialMayor;}
 
         public Town getAttackedTown() {return attackedTown;}
         public Nation getAttackingNation() {return attackingNation;}
         public Nation getDefendingNation() {return defendingNation;}
         public FlagInfo getCurrentFlag() {return currentFlag;}
         public void setCurrentFlag(FlagInfo currentFlag) {this.currentFlag = currentFlag;}
+        public FlagState getCurrentFlagState() {return currentFlagState;}
+        public void setCurrentFlagState(FlagState currentFlagState) {this.currentFlagState = currentFlagState;}
     }
 
     // uses the UUID of the town being attacked, as a town can only be attacked once at a time.
@@ -116,7 +128,6 @@ public class WarListener implements Listener {
     @EventHandler
     public void onWarStart(WarStartEvent e) {
         Town attackedTown = e.getAttackedTown();
-        System.out.println("warStartEvent");
         server.broadcastMessage(ChatColor.BLUE + "[" + ChatColor.YELLOW + "FLAGWAR" + ChatColor.BLUE + "] " + ChatColor.WHITE + e.getAttackingNation().getName() + " has initiated a battle on " + e.getDefendingNation().getName() + " at " + e.getAttackedTown().getName() + "!");
 
         // plugin.getConfig().set("activeWars", attackedTown);
@@ -128,20 +139,43 @@ public class WarListener implements Listener {
 
     @EventHandler
     public void onWarEnd(WarEndEvent e) {
+        WarInfo warInfo = warInfos.get(e.getAttackedTown().getUUID());
         // warInfos.get(e.getAttackedTown().getUUID()).getCurrentFlag().getAttackData().destroyFlag();
-        warInfos.remove(e.getAttackedTown().getUUID());
         server.broadcastMessage(ChatColor.BLUE + "[" + ChatColor.YELLOW + "FLAGWAR" + ChatColor.BLUE + "] " + ChatColor.WHITE + "The battle between " + e.getAttackingNation().getName() + " and " + e.getDefendingNation().getName() + " at " + e.getAttackedTown().getName() + " has ended!");
         if (e.getWarEndReason() == WarEndEvent.WarEndReason.timerRanOut) {
+
             server.broadcastMessage(ChatColor.BLUE + "[" + ChatColor.YELLOW + "FLAGWAR" + ChatColor.BLUE + "] " + ChatColor.WHITE + e.getDefendingNation().getName() + " has successfully defended " + e.getAttackedTown().getName() + " from " + e.getAttackingNation().getName() + "!");
             pasteChunk.pasteChunks(e.getAttackedTown().getWorld(), e.getAttackedTown());
-        } else if (e.getWarEndReason() == WarEndEvent.WarEndReason.homeBlockCellWon) {
-            server.broadcastMessage(ChatColor.BLUE + "[" + ChatColor.YELLOW + "FLAGWAR" + ChatColor.BLUE + "] " + ChatColor.WHITE + e.getAttackingNation().getName() + " has successfully conquered " + e.getAttackedTown().getName() + " from " + e.getDefendingNation().getName() + "!");
-            new BukkitRunnable() {
+            warInfo.setCurrentFlagState(FlagState.postFlag);
+
+            new BukkitRunnable()
+            {
                 @Override
-                public void run() {
+                public void run()
+                {
+                    warInfos.remove(e.getAttackedTown().getUUID());
+                }
+            }.runTaskLater(plugin, 400);
+
+        } else if (e.getWarEndReason() == WarEndEvent.WarEndReason.homeBlockCellWon) {
+
+            server.broadcastMessage(ChatColor.BLUE + "[" + ChatColor.YELLOW + "FLAGWAR" + ChatColor.BLUE + "] " + ChatColor.WHITE + e.getAttackingNation().getName() + " has successfully conquered " + e.getAttackedTown().getName() + " from " + e.getDefendingNation().getName() + "! The attacker now has free-range over the town!");
+            Bukkit.getServer().broadcastMessage(String.valueOf(e.getAttackedTown().getPermissions()));
+
+            TownRuinUtil.putTownIntoRuinedState(e.getAttackedTown());
+            warInfo.setCurrentFlagState(FlagState.postFlag);
+
+            new BukkitRunnable()
+            {
+                @Override
+                public void run()
+                {
+                    Bukkit.getServer().broadcastMessage("now put all perms back");
+                    TownRuinUtil.reclaimTown(warInfo.getInitialMayor(), e.getAttackedTown());
+                    warInfos.remove(e.getAttackedTown().getUUID());
                     pasteChunk.pasteChunks(e.getAttackedTown().getWorld(), e.getAttackedTown());
                 }
-            }.runTaskLater(plugin, 200);
+            }.runTaskLater(plugin, 400);
         }
     }
 
@@ -179,12 +213,13 @@ public class WarListener implements Listener {
     @EventHandler
     public void onPotentialFlagLiveIncrease(PlayerInteractEvent e)
     {
-        if (e.getAction().isRightClick() && e.getHand() == EquipmentSlot.HAND)
+        if (e.getAction().isRightClick() && e.getHand() == EquipmentSlot.HAND && e.getClickedBlock() != null)
         {
             Block potentialFlagBlock = e.getClickedBlock();
             TownBlock tb = TownyAPI.getInstance().getTownBlock(potentialFlagBlock.getLocation());
+            if (warInfos.getOrDefault(tb.getTownOrNull().getUUID(), null) == null) return;
             FlagInfo currentFlag = warInfos.get(tb.getTownOrNull().getUUID()).getCurrentFlag();
-            if (currentFlag != null && currentFlag.getFlagBlock().equals(potentialFlagBlock))
+            if (currentFlag != null && currentFlag.getFlagBlock() != null && currentFlag.getFlagBlock().equals(potentialFlagBlock))
             {
                 ItemStack itemHeld = e.getPlayer().getInventory().getItemInMainHand();
                 Player p = e.getPlayer();
@@ -218,10 +253,16 @@ public class WarListener implements Listener {
                         currentFlag.setPotentialExtraLives(0);
                         currentFlag.setActualExtraLives(currentFlag.getActualExtraLives()+1);
                         currentFlag.setExtraTicks(currentFlag.getExtraTicks()+300);
-
                     }
                 }
             }
         }
+    }
+
+
+    @EventHandler
+    public void onEligibleToFlag(EligibleToFlagEvent e)
+    {
+        warInfos.get(e.getAttackedTown().getUUID()).setCurrentFlagState(FlagState.flag);
     }
 }

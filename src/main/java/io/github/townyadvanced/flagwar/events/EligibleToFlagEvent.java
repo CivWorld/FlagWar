@@ -1,0 +1,51 @@
+/*
+ * Copyright (c) 2025 TownyAdvanced
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *          http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package io.github.townyadvanced.flagwar.events;
+
+import com.palmergames.bukkit.towny.object.Nation;
+import com.palmergames.bukkit.towny.object.Town;
+import org.bukkit.event.Cancellable;
+import org.bukkit.event.Event;
+import org.bukkit.event.HandlerList;
+import org.jetbrains.annotations.NotNull;
+
+public class EligibleToFlagEvent extends Event implements Cancellable {
+
+    private static final HandlerList handlerList = new HandlerList();
+    final Town attackedTown;
+    final Nation attackingNation;
+    final Nation defendingNation;
+    boolean cancelled = false;
+
+    @Override
+    public @NotNull HandlerList getHandlers() {return handlerList;}
+    public static HandlerList getHandlerList() {return handlerList;}
+
+    public EligibleToFlagEvent(Town attackedTown, Nation attackingNation, Nation defendingNation) {this.attackedTown = attackedTown; this.attackingNation = attackingNation; this.defendingNation =  defendingNation;}
+
+    public Town getAttackedTown() {return attackedTown;}
+    public Nation getAttackingNation() {return attackingNation;}
+    public Nation getDefendingNation() {return defendingNation;}
+
+    public void setCancelled(final boolean cancelled) {this.cancelled = cancelled;}
+    public boolean isCancelled(){return cancelled;}
+
+
+
+
+
+}
