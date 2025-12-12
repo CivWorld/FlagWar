@@ -53,15 +53,7 @@ public class WarManager {
 
 
     public WarManager() {
-
-        /*
-        TODO: Get this function working. Here is what you need to do.
-            - This might involve passing a list/collection of the files in the runnables folder byref.
-            - This is so that it removes the files required, so that the rest are just PersistentRunnable instantiated.
-            - DO NOT REMOVE FROM THE YML, THAT IS ALREADY HANDLED IN fullyEndWar().
-         */
-
-
+        
         try{ populateWarInfosMap(); } catch (IOException e) {e.printStackTrace();}
         ArrayList<File> listOfRunnables = new ArrayList<>(List.of(new File(plugin.getDataFolder(), "runnables").listFiles()));
 
