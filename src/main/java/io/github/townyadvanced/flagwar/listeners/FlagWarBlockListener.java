@@ -22,9 +22,11 @@ import com.palmergames.bukkit.towny.event.actions.TownyActionEvent;
 import com.palmergames.bukkit.towny.exceptions.NotRegisteredException;
 import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
-import io.github.townyadvanced.flagwar.events.EligibleToFlagEvent;
+import io.github.townyadvanced.flagwar.WarManager;
 import io.github.townyadvanced.flagwar.events.WarEndEvent;
 import io.github.townyadvanced.flagwar.events.WarStartEvent;
+import io.github.townyadvanced.flagwar.objects.PersistentRunnable;
+import io.github.townyadvanced.flagwar.objects.WarInfo;
 import org.bukkit.Bukkit;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
@@ -42,9 +44,9 @@ import com.palmergames.bukkit.towny.object.WorldCoord;
 import com.palmergames.bukkit.towny.object.PlayerCache.TownBlockStatus;
 import io.github.townyadvanced.flagwar.FlagWar;
 import io.github.townyadvanced.flagwar.config.FlagWarConfig;
-import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.UUID;
 
@@ -54,7 +56,8 @@ import java.util.UUID;
  * Used for flag protections and triggering CellAttackEvents.
  */
 public class FlagWarBlockListener implements Listener {
-    HashMap<UUID, Integer> taskIDs = new HashMap<>();
+
+    WarManager warManager;
 
     /** Retains the {@link Towny} instance, after construction.  */
     private Towny towny;
@@ -67,6 +70,7 @@ public class FlagWarBlockListener implements Listener {
     public FlagWarBlockListener(final FlagWar flagWar) {
         if (flagWar.getServer().getPluginManager().getPlugin("Towny") != null) {
             this.towny = Towny.getPlugin();
+            this.warManager = flagWar.getWarManager();
         }
     }
 
@@ -76,8 +80,7 @@ public class FlagWarBlockListener implements Listener {
         Town victimTown = e.getTownBlock().getTown();
         Resident enemy = TownyAPI.getInstance().getResident(e.getPlayer());
 
-        ArrayList<Resident> onlineResidentsList = (ArrayList<Resident>) victimTown.getResidents().stream().filter(Resident::isOnline).toList();
-        System.out.println(onlineResidentsList.size());
+        Collection<Resident> onlineResidentsList = victimTown.getResidents();
 
         if (    e.getTownBlock() == null
             || !e.getTownBlock().getWorld().isWarAllowed()
@@ -85,7 +88,7 @@ public class FlagWarBlockListener implements Listener {
             || !FlagWarConfig.isAllowingAttacks()
             || !Tag.BANNERS.isTagged(e.getBlock().getType())
             || !(enemy.getTownOrNull().getNationOrNull().getEnemies().contains(victimTown.getNationOrNull()))
-            || WarListener.warInfos.get(victimTown.getUUID()) != null
+            || warManager.hasActiveWar(victimTown)
             || victimTown.hasActiveWar()
             || e.isInWilderness()
             || FlagWarConfig.getMinPlayersOnlineInTownForWar() > onlineResidentsList.size())
@@ -96,31 +99,10 @@ public class FlagWarBlockListener implements Listener {
         e.setCancelled(false);
         Bukkit.getServer().getPluginManager().callEvent(new WarStartEvent(victimTown, enemy.getNationOrNull(), victimTown.getNationOrNull()));
 
-        new BukkitRunnable()
-        {
-            @Override
-            public void run() {
-                EligibleToFlagEvent eligibleToFlagEvent = new EligibleToFlagEvent(victimTown, enemy.getNationOrNull(), victimTown.getNationOrNull());
-                Bukkit.getServer().getPluginManager().callEvent(eligibleToFlagEvent);
-                e.getPlayer().sendMessage("TOWNY: You have begun a flag state.");
-            }
-        }.runTaskLater(towny, 40);
-
-        int taskID = new BukkitRunnable()
-        {
-            @Override
-            public void run() {
-                Bukkit.getServer().getPluginManager().callEvent(new WarEndEvent(victimTown, enemy.getNationOrNull(), victimTown.getNationOrNull(), WarEndEvent.WarEndReason.timerRanOut));
-            }
-        }.runTaskLater(towny, 2000).getTaskId();
-        taskIDs.put(victimTown.getUUID(), taskID);
+        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.flagStateTown, 200, victimTown.getWorld().getUID(), new String[] {victimTown.getName()});
     }
 
-    @EventHandler
-    public void onWarEnd(WarEndEvent e)
-    {
-        Bukkit.getScheduler().cancelTask(taskIDs.get(e.getAttackedTown().getUUID()));
-    }
+
 
     /**
      * Check if the {@link Player} from {@link TownyBuildEvent#getPlayer()} is attempting to build inside enemy lands,
@@ -131,14 +113,13 @@ public class FlagWarBlockListener implements Listener {
     @EventHandler (priority = EventPriority.HIGH)
     @SuppressWarnings("unused")
     public void onFlagWarFlagPlace(final TownyBuildEvent townyBuildEvent) throws NotRegisteredException {
-        if (townyBuildEvent.getTownBlock() == null
+        if (   townyBuildEvent.getTownBlock() == null
             || !townyBuildEvent.getTownBlock().getWorld().isWarAllowed()
             || !townyBuildEvent.getTownBlock().getTownOrNull().isAllowedToWar()
             || !FlagWarConfig.isAllowingAttacks()
             || !Tag.FENCES.isTagged(townyBuildEvent.getMaterial())
-            || WarListener.warInfos.get(townyBuildEvent.getTownBlock().getTown().getUUID()) == null
-            || WarListener.warInfos.get(townyBuildEvent.getTownBlock().getTown().getUUID()).getCurrentFlagState() != WarListener.FlagState.flag
-            || WarListener.warInfos.get(townyBuildEvent.getTownBlock().getTown().getUUID()).getCurrentFlag() != null)
+            || !warManager.hasActiveWar(townyBuildEvent.getTownBlock().getTownOrNull())
+            || !warManager.isEligibleToFlag(townyBuildEvent.getTownBlock().getTownOrNull()))
         {
             return;
         }

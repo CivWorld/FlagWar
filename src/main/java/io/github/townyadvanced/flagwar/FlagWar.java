@@ -41,38 +41,35 @@ import io.github.townyadvanced.flagwar.config.FlagWarConfig;
 import io.github.townyadvanced.flagwar.events.CellAttackCanceledEvent;
 import io.github.townyadvanced.flagwar.events.CellAttackEvent;
 import io.github.townyadvanced.flagwar.events.CellDefendedEvent;
-import io.github.townyadvanced.flagwar.events.CellWonEvent;
 import io.github.townyadvanced.flagwar.i18n.LocaleUtil;
 import io.github.townyadvanced.flagwar.i18n.Translate;
 import io.github.townyadvanced.flagwar.listeners.*;
 import io.github.townyadvanced.flagwar.objects.Cell;
 import io.github.townyadvanced.flagwar.objects.CellUnderAttack;
 
+import java.io.File;
 import java.io.IOException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import io.github.townyadvanced.flagwar.objects.FlagInfo;
+import io.github.townyadvanced.flagwar.objects.PersistentRunnable;
 import io.github.townyadvanced.flagwar.util.Messaging;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitRunnable;
 
 /**
  * The main class of the TownyAdvanced: FlagWar addon. Houses core functionality.
@@ -120,6 +117,8 @@ public class FlagWar extends JavaPlugin {
     private OutlawListener outlawListener;
     /** Holds instance of the {@link WarListener}. */
     private WarListener warListener;
+    /** Holds instance of the {@link WarManager}. */
+    private static WarManager warManager;
 
     /**
      * Initializes the Scheduler object based on whether we're using Folia/Paper or Spigot/Bukkit.
@@ -143,12 +142,20 @@ public class FlagWar extends JavaPlugin {
 
         brandingMessage();
         checkTowny();
+        /* warManager initialization MUST be before initializeListeners() function
+        or it will initialize the listeners with a null warManager.*/
+        warManager = new WarManager();
         initializeListeners();
         loadFlagWarMaterials();
         registerEvents();
         bStatsKickstart();
 
         new TownyAdminReloadAddon();
+
+    }
+
+    public WarManager getWarManager() {
+        return warManager;
     }
 
     /**
@@ -169,6 +176,7 @@ public class FlagWar extends JavaPlugin {
             onDisable();
             return true;
         }
+
         return false;
     }
 
@@ -252,7 +260,7 @@ public class FlagWar extends JavaPlugin {
         flagWarEntityListener = new FlagWarEntityListener();
         warzoneListener = new WarzoneListener();
         outlawListener = new OutlawListener();
-        warListener = new WarListener();
+        warListener = new WarListener(warManager);
         FW_LOGGER.log(Level.INFO, () -> Translate.from("startup.listeners.initialized"));
     }
 
@@ -398,28 +406,13 @@ public class FlagWar extends JavaPlugin {
         return ATTACK_HASH_MAP.get(cell);
     }
 
-    static void removeCellUnderAttack(final CellUnderAttack cell) {
+    public static void removeCellUnderAttack(final CellUnderAttack cell) {
         removeFlagFromPlayerCount(cell.getNameOfFlagOwner(), cell);
         ATTACK_HASH_MAP.remove(cell);
     }
 
     static void attackWon(final CellUnderAttack cell) {
-        Town town = TownyAPI.getInstance().getTown(cell.getFlagBaseBlock().getLocation());
-        WarListener.FlagInfo currentFlag = WarListener.warInfos.get(town.getUUID()).getCurrentFlag();
-            Bukkit.getServer().broadcastMessage("Extra time of " + (currentFlag.getExtraTicks()/20) + " begins now!");
-            cell.setUnderExtraTime(true);
-            new BukkitRunnable()
-            {
-                @Override
-                public void run()
-                {
-                    cell.setUnderExtraTime(false);
-                    var cellWonEvent = new CellWonEvent(cell);
-                    PLUGIN_MANAGER.callEvent(cellWonEvent);
-                    cell.cancel();
-                    removeCellUnderAttack(cell);
-                }
-            }.runTaskLater(plugin, currentFlag.getExtraTicks());
+        WarManager.beginEndFlag(cell);
 
         //var cellWonEvent = new CellWonEvent(cell);
         //PLUGIN_MANAGER.callEvent(cellWonEvent);
@@ -429,13 +422,10 @@ public class FlagWar extends JavaPlugin {
 
     static void attackDefended(final Player player, final CellUnderAttack cell) {
 
-        Town town = TownyAPI.getInstance().getTown(cell.getFlagBaseBlock().getLocation());
-        int lives = WarListener.warInfos.get(town.getUUID()).getCurrentFlag().getActualExtraLives();
-
-        if (lives > 0)
+        FlagInfo currentFlag = WarManager.getFlagInfoOrNull(cell);
+        if (!WarManager.decrementAndCheckifDead(currentFlag))
         {
-            WarListener.warInfos.get(town.getUUID()).getCurrentFlag().setActualExtraLives(lives-1);
-            player.sendMessage("Forcefield destroyed! There are " + lives + " lives left!");
+            player.sendMessage("Forcefield destroyed! There are " + (currentFlag.getActualExtraLives()+1) + " lives left!");
             return;
         }
 

@@ -8,6 +8,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 
@@ -15,59 +16,6 @@ import java.util.ArrayList;
 public class PasteChunk {
 
     JavaPlugin plugin = JavaPlugin.getProvidingPlugin(this.getClass());
-
-    class PendingChunk {
-        private String[] materials;
-        private String[] blockDatas;
-        private int x;
-        private int z;
-
-        PendingChunk(String[] mats, String[] bds, int X, int Z) {
-            materials = mats;
-            blockDatas = bds;
-            x = X;
-            z = Z;
-        }
-
-        PendingChunk(int X, int Z) {
-            materials = null;
-            blockDatas = null;
-            x = X;
-            z = Z;
-        }
-
-        public int getX() {
-            return x;
-        }
-
-        public int getZ() {
-            return z;
-        }
-
-        public String[] getMaterials() {
-            return materials;
-        }
-
-        public String[] getBlockDatas() {
-            return blockDatas;
-        }
-
-        public void setX(int X) {
-            x = X;
-        }
-
-        public void setZ(int Z) {
-            z = Z;
-        }
-
-        public void setMaterials(String[] mats) {
-            materials = mats;
-        }
-
-        public void setBlockDatas(String[] bds) {
-            blockDatas = bds;
-        }
-    }
 
     private void pasteBlocks(World world, ArrayList<PendingChunk> pendingChunks) {
         System.out.println("Placing blocks now.");
@@ -80,14 +28,14 @@ public class PasteChunk {
             Bukkit.getServer().broadcastMessage(pendingChunk.getX() + ", " + pendingChunk.getZ());
             Chunk thisChunk = world.getChunkAt(pendingChunk.getX(), pendingChunk.getZ());
 
-            for (int i = 0; i < pendingChunk.blockDatas.length; i++) {
+            for (int i = 0; i < pendingChunk.getBlockDatas().length; i++) {
                 int x = i % 16;
                 int z = (i / 16) % 16;
                 int y = (i) / 256;
                 int ny = y - 64;
 
                 Block thisBlock = thisChunk.getBlock(x, ny, z);
-                if (pendingChunk.materials[i] == null) {
+                if (pendingChunk.getMaterials()[i] == null) {
                     thisBlock.setType(Material.AIR);
                 } else {
                     if (pendingChunk.getMaterials()[i] != null)
@@ -147,17 +95,21 @@ public class PasteChunk {
                             System.out.println(pendingChunksToPlace);
                             Bukkit.getServer().broadcastMessage(chunkFile.getPath());
 
+                            ois.close();
+                            fis.close();
+
                             Path path = Path.of(chunkFile.getPath());
-                            // add some code to delete
+                            Files.deleteIfExists(path);
 
                         } catch (IOException | ClassNotFoundException e) {
                             e.printStackTrace();
                         }
+                        finally
+                        {
+                        }
                     }
-
-                    //cancel();
                 }
-            }.runTaskLaterAsynchronously(plugin, i);
+            }.runTaskLaterAsynchronously(plugin, i+1);
         }
 
         int finalLength = length;
