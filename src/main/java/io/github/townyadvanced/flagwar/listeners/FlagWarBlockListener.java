@@ -76,13 +76,13 @@ public class FlagWarBlockListener implements Listener {
 
     @EventHandler
     public void onPotentialBannerPlace(TownyBuildEvent e) throws NotRegisteredException {
-
+        if (e.getTownBlock() == null) return;
         Town victimTown = e.getTownBlock().getTown();
         Resident enemy = TownyAPI.getInstance().getResident(e.getPlayer());
 
         Collection<Resident> onlineResidentsList = victimTown.getResidents();
 
-        if (    e.getTownBlock() == null
+        if (    e.isInWilderness()
             || !e.getTownBlock().getWorld().isWarAllowed()
             || !e.getTownBlock().getTownOrNull().isAllowedToWar()
             || !FlagWarConfig.isAllowingAttacks()
@@ -90,7 +90,6 @@ public class FlagWarBlockListener implements Listener {
             || !(enemy.getTownOrNull().getNationOrNull().getEnemies().contains(victimTown.getNationOrNull()))
             || warManager.hasActiveWar(victimTown)
             || victimTown.hasActiveWar()
-            || e.isInWilderness()
             || FlagWarConfig.getMinPlayersOnlineInTownForWar() > onlineResidentsList.size())
         {
             return;
@@ -99,7 +98,7 @@ public class FlagWarBlockListener implements Listener {
         e.setCancelled(false);
         Bukkit.getServer().getPluginManager().callEvent(new WarStartEvent(victimTown, enemy.getNationOrNull(), victimTown.getNationOrNull()));
 
-        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.flagStateTown, 200, victimTown.getWorld().getUID(), new String[] {victimTown.getName()});
+        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.flagStateTown, FlagWarConfig.getSecondsOfPreFlag()*20L, victimTown.getWorld().getUID(), new String[] {victimTown.getName()});
     }
 
 

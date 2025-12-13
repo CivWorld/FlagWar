@@ -190,7 +190,7 @@ public class FlagWarCustomListener implements Listener {
             }
 
             // Defender loses townblock
-            // transferOrUnclaimOrKeepTownblock(attackingTown, townBlock, defendingTown);
+            transferOrUnclaimOrKeepTownblock(attackingTown, townBlock, defendingTown);
 
             // checks if this is the homeblock.
             if (townBlock.isHomeBlock()) {Bukkit.getServer().getPluginManager().callEvent(new WarEndEvent(defendingTown, attackingNation, defendingTown.getNationOrNull(), WarEndEvent.WarEndReason.homeBlockCellWon));}

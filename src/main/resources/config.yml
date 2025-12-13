@@ -166,6 +166,37 @@ extra:
     # If enabled, show additional debug messages as warnings. Recommended keeping these disabled unless requested.
     debug: false
 
-# Everything beyond this point was written by another development team working on CivWorld.
-activeWars:
+
+## Everything beyond this point was written by another development team working on CivWorld. ##
+
+flag_lives:
+
+    # The item used to pay for flag lives. Case sensitive.
+    item_of_payment: GOLD_INGOT
+
+    # The price of increasing flag lives.
+    first_extra_life_price: 8
+    second_extra_life_price: 16
+    third_extra_life_price: 32
+
+    # The number of seconds after the first flag life increase until you can no longer add lives.
+    seconds_until_locked_flag_lives: 30
+
+    # The number of seconds of extra time per flag life.
+    extra_time_in_seconds_for_each_flag_life: 10
+
+
+battle_timings:
+
+    # How long a town's pre-flag state is.
+    seconds_of_pre_flag: 900 # 15 minutes
+
+    # How long a town's flag time is (the time between the end of pre-flag and start of post-flag).
+    seconds_of_flag: 1800 # 30 minutes
+
+    # How long a town is immune to attacks after a war is over.
+    seconds_of_invincibility: 86400 # 1 day
+
+    # How long a town is ruined after it loses a defense.
+    seconds_town_is_ruined: 900 # 15 minutes
 

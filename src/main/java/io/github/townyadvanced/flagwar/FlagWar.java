@@ -142,8 +142,10 @@ public class FlagWar extends JavaPlugin {
 
         brandingMessage();
         checkTowny();
-        /* warManager initialization MUST be before initializeListeners() function
-        or it will initialize the listeners with a null warManager.*/
+
+        /* warManager initialization MUST be before initializeListeners()
+        or it will initialize the listeners with a null warManager. */
+
         warManager = new WarManager();
         initializeListeners();
         loadFlagWarMaterials();
@@ -413,11 +415,6 @@ public class FlagWar extends JavaPlugin {
 
     static void attackWon(final CellUnderAttack cell) {
         WarManager.beginEndFlag(cell);
-
-        //var cellWonEvent = new CellWonEvent(cell);
-        //PLUGIN_MANAGER.callEvent(cellWonEvent);
-        //cell.cancel();
-        //removeCellUnderAttack(cell);
     }
 
     static void attackDefended(final Player player, final CellUnderAttack cell) {

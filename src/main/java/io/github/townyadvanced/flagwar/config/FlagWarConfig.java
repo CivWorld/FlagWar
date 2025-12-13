@@ -589,4 +589,54 @@ public final class FlagWarConfig {
     public static boolean isDeclaringNeutralAllowed() {
         return PLUGIN.getConfig().getBoolean("rules.nations_can_toggle_neutral");
     }
+
+    /** @return how much of the configurable item is needed to unlock the nth flag life.*/
+    public static int getPriceToIncreaseFlagLives(int nthLife)
+    {
+        switch (nthLife)
+        {
+            case 1: return PLUGIN.getConfig().getInt("flag_lives.first_extra_life_price");
+            case 2: return PLUGIN.getConfig().getInt("flag_lives.second_extra_life_price");
+            case 3: return PLUGIN.getConfig().getInt("flag_lives.third_extra_life_price");
+            default: return 10 * nthLife; // a half-decent dummy number
+        }
+    }
+
+    /** @return the number of seconds after unlocking the first flag life until you can no longer add any more lives.*/
+    public static int getSecondsUntilLockedFlagLives()
+    {
+        return PLUGIN.getConfig().getInt(("flag_lives.seconds_until_locked_flag_lives"));
+    }
+
+    /** @return the material of the item required to unlock flag lives.*/
+    public static String getItemOfPaymentForFlagLives()
+    {
+        return PLUGIN.getConfig().getString(("flag_lives.item_of_payment"));
+    }
+
+    public static int getExtraTimeSecondsPerFlagLife()
+    {
+        return PLUGIN.getConfig().getInt(("flag_lives.extra_time_in_seconds_for_each_flag_life"));
+    }
+
+
+    public static int getSecondsOfPreFlag()
+    {
+        return PLUGIN.getConfig().getInt(("battle_timings.seconds_of_pre_flag"));
+    }
+
+    public static int getSecondsOfFlag()
+    {
+        return PLUGIN.getConfig().getInt(("battle_timings.seconds_of_flag"));
+    }
+
+    public static int getSecondsOfInvincibility()
+    {
+        return PLUGIN.getConfig().getInt(("battle_timings.seconds_of_invincibility"));
+    }
+
+    public static int getSecondsOfRuined()
+    {
+        return PLUGIN.getConfig().getInt(("battle_timings.seconds_town_is_ruined"));
+    }
 }

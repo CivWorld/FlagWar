@@ -20,6 +20,7 @@ package io.github.townyadvanced.flagwar.objects;
 import com.gmail.filoghost.holographicdisplays.api.Hologram;
 import com.gmail.filoghost.holographicdisplays.api.HologramsAPI;
 import com.gmail.filoghost.holographicdisplays.api.line.TextLine;
+import com.palmergames.bukkit.towny.TownyAPI;
 import com.palmergames.bukkit.towny.object.Coord;
 import com.palmergames.bukkit.towny.scheduling.ScheduledTask;
 import com.palmergames.bukkit.towny.scheduling.TaskScheduler;
@@ -27,6 +28,7 @@ import com.palmergames.bukkit.towny.scheduling.TaskScheduler;
 import io.github.townyadvanced.flagwar.CellAttackThread;
 import io.github.townyadvanced.flagwar.FlagWar;
 import io.github.townyadvanced.flagwar.HologramUpdateThread;
+import io.github.townyadvanced.flagwar.WarManager;
 import io.github.townyadvanced.flagwar.config.FlagWarConfig;
 import io.github.townyadvanced.flagwar.i18n.Translate;
 import io.github.townyadvanced.flagwar.util.Messaging;
@@ -35,8 +37,11 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.java.JavaPlugin;
+
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -85,6 +90,8 @@ public class CellUnderAttack extends Cell {
     /** Holds the {@link TextLine} of the hologram timer line. */
     private TextLine timerLine;
 
+    private static WarManager warManager;
+
     /**
      * Prepares the CellUnderAttack.
      *
@@ -107,6 +114,7 @@ public class CellUnderAttack extends Cell {
         this.flagPhaseDuration = timerPhase;
         this.thread = new CellAttackThread(this);
         this.hologramThread = new HologramUpdateThread(this);
+        warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
     }
 
     /** @return if {@link CellUnderAttack} equals a given {@link Object}. (Defers to {@link Cell#equals(Object)}.) */
@@ -254,6 +262,15 @@ public class CellUnderAttack extends Cell {
     public void updateFlag() {
         Material[] timer = FlagWarConfig.getTimerBlocks();
         if (!hasEnded()) {
+            Collection<FlagInfo> currentFlags = warManager.getWarInfoOrNull(TownyAPI.getInstance().getTown(flagBaseBlock.getLocation())).getCurrentFlags();
+
+                for (var flag : currentFlags)
+
+                    if (flag.getFlagPlacer().getName().equalsIgnoreCase(this.getNameOfFlagOwner()))
+                    {
+                    flag.setAttackData(this);
+                }
+
             flagTimerBlock.setType(timer[flagPhaseID]);
             LOGGER.log(Level.INFO, () ->
                 Translate.from("log.warflag-updated", getCellString(), timer[flagPhaseID].toString()));
@@ -261,6 +278,7 @@ public class CellUnderAttack extends Cell {
                 block.setType(timer[flagPhaseID]);
             }
         }
+
     }
 
     /** Set all blocks constituting the war flag and beacon as AIR. */

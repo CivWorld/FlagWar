@@ -152,8 +152,6 @@ public class PersistentRunnable {
         Town attackedTown = warInfo.getAttackedTown();
         System.out.println(warInfo.getInitialMayor());
         TownRuinUtil.reclaimTown(warInfo.getInitialMayor(), attackedTown);
-
-        warManager.fullyEndWar(warInfo);
     }
 
     void unWarStateTown(String townName) {

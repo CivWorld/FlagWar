@@ -24,12 +24,12 @@ import org.bukkit.block.Block;
 public class FlagInfo
 {
     private final Resident flagPlacer;
-    private int potentialExtraLives = 2; // if 2 then 4 gold for an extra life, if 1 then 16, if 0 you can't do shit.
+    private int potentialExtraLives = 3;
     private int actualExtraLives = 0;
     private final TownBlock currentTownBlock;
     private final Block flagBlock;
     private boolean livesFrozen = false;
-    private final CellUnderAttack attackData;
+    private CellUnderAttack attackData;
     private int extraTicks = 0;
 
     public FlagInfo(Resident flagPlacer, TownBlock currentTownBlock, Block flagBlock, CellUnderAttack attackData) {
@@ -48,6 +48,7 @@ public class FlagInfo
     public boolean isLivesFrozen() {return livesFrozen;}
     public void setLivesFrozen(boolean livesFrozen) {this.livesFrozen = livesFrozen;}
     public TownBlock getCurrentTownBlock() {return currentTownBlock;}
+    public void setAttackData(CellUnderAttack attackData) {this.attackData = attackData;}
     public CellUnderAttack getAttackData() {return attackData;}
     public int getExtraTicks() {return extraTicks;}
     public void setExtraTicks(int extraTicks) {this.extraTicks = extraTicks;}

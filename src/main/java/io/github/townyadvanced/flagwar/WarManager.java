@@ -17,6 +17,7 @@
 package io.github.townyadvanced.flagwar;
 
 import com.palmergames.bukkit.towny.TownyAPI;
+import com.palmergames.bukkit.towny.TownyMessaging;
 import com.palmergames.bukkit.towny.object.Nation;
 import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
@@ -24,13 +25,12 @@ import com.palmergames.bukkit.towny.object.TownBlock;
 import com.palmergames.bukkit.towny.utils.TownRuinUtil;
 import io.github.townyadvanced.flagwar.chunkManipulation.CopyChunk;
 import io.github.townyadvanced.flagwar.chunkManipulation.PasteChunk;
+import io.github.townyadvanced.flagwar.config.FlagWarConfig;
 import io.github.townyadvanced.flagwar.events.CellWonEvent;
-import io.github.townyadvanced.flagwar.objects.CellUnderAttack;
-import io.github.townyadvanced.flagwar.objects.FlagInfo;
-import io.github.townyadvanced.flagwar.objects.PersistentRunnable;
-import io.github.townyadvanced.flagwar.objects.WarInfo;
+import io.github.townyadvanced.flagwar.objects.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -40,10 +40,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class WarManager {
     static Plugin plugin = FlagWar.getInstance();
@@ -54,16 +51,18 @@ public class WarManager {
 
     public WarManager() {
 
-        /*
-        TODO: Get this function working. Here is what you need to do.
-            - This might involve passing a list/collection of the files in the runnables folder byref.
-            - This is so that it removes the files required, so that the rest are just PersistentRunnable instantiated.
-            - DO NOT REMOVE FROM THE YML, THAT IS ALREADY HANDLED IN fullyEndWar().
-         */
+        try { populateWarInfosMap(); } catch (IOException e) {e.printStackTrace();}
+        File runnablesFolder = new File(plugin.getDataFolder(), "runnables");
 
+        try {
+            if (!runnablesFolder.exists())
+            {
+                runnablesFolder.getParentFile().mkdirs();
+                runnablesFolder.createNewFile();
+            }
+        } catch (IOException e) { e.printStackTrace(); }
 
-        try{ populateWarInfosMap(); } catch (IOException e) {e.printStackTrace();}
-        ArrayList<File> listOfRunnables = new ArrayList<>(List.of(new File(plugin.getDataFolder(), "runnables").listFiles()));
+        ArrayList<File> listOfRunnables = new ArrayList<>(List.of(runnablesFolder.listFiles()));
 
         if (listOfRunnables.isEmpty()) {
             System.out.println("runnables file is null, implying no active wars present.");
@@ -95,12 +94,13 @@ public class WarManager {
             Nation defendingNation = TownyAPI.getInstance().getNation((String) wc.get(key + ".defendingNation"));
             Resident initialMayor = TownyAPI.getInstance().getResident(UUID.fromString((String) wc.get(key + ".initialMayor")));
             WarInfo.FlagState flagState = WarInfo.FlagState.valueOf((String) wc.get(key + ".flagState"));
+            Collection<ChunkCoordPair> chunkCoordPairs = ChunkCoordPair.getListOfChunkCoords(",", ";", (String) wc.get(key + ".townBlocks"));
 
             WarInfo warInfo;
             if (isEndWarRunnableRequired(flagState))
             {
                 new PersistentRunnable((String) wc.get(key + ".pathOfEndWarRunnable"));
-                warInfo = new WarInfo(attackedTown, attackingNation, defendingNation, initialMayor, flagState, new PersistentRunnable((String) wc.get(key + ".pathOfEndWarRunnable")), false);
+                warInfo = new WarInfo(attackedTown, attackingNation, defendingNation, initialMayor, flagState, new PersistentRunnable((String) wc.get(key + ".pathOfEndWarRunnable")), chunkCoordPairs);
             }
             else
             {
@@ -113,7 +113,8 @@ public class WarManager {
 
     public void startWar(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, WarInfo.FlagState flagState, boolean writeToYML)
     {
-        PersistentRunnable runnable = new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.endWarDueToTimeUp, 2000, attackedTown.getWorld().getUID(), new String[] {attackedTown.getName()});
+        Bukkit.getServer().broadcastMessage("The war will last " + (FlagWarConfig.getSecondsOfFlag()*20L+FlagWarConfig.getSecondsOfPreFlag()*20L)/20 + " seconds!");
+        PersistentRunnable runnable = new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.endWarDueToTimeUp, (FlagWarConfig.getSecondsOfFlag()*20L+FlagWarConfig.getSecondsOfPreFlag()*20L), attackedTown.getWorld().getUID(), new String[] {attackedTown.getName()});
         copyChunk.copyChunks(attackedTown.getWorld(), attackedTown);
         WarInfo warInfo = new WarInfo(attackedTown, attackingNation, defendingNation, initialMayor, flagState, runnable, writeToYML);
         putIntoWarInfosMap(attackedTown.getUUID(), warInfo);
@@ -121,7 +122,7 @@ public class WarManager {
 
     public void sanityCheck()
     {
-        System.out.println("I am a war manager and I am alive!");
+        System.out.println("I am a war manager!");
     }
 
     public static FlagInfo getFlagInfoOrNull(WarInfo warInfo, Location location) {
@@ -142,8 +143,8 @@ public class WarManager {
         String flagPlacer = cellUnderAttack.getNameOfFlagOwner();
         Town town = TownyAPI.getInstance().getTown(cellUnderAttack.getFlagBaseBlock().getLocation());
 
-        HashMap<UUID, WarInfo> war_infosCLONE = (HashMap<UUID, WarInfo>) warManager.getWarInfos().clone();
         // you can never be safe with static functions and concurrent modifications, so war_infos will be cloned.
+        HashMap<UUID, WarInfo> war_infosCLONE = (HashMap<UUID, WarInfo>) warManager.getWarInfos().clone();
 
         if (war_infosCLONE == null || town == null) {
             System.out.println("Error, hashmap cloning or town getting failed.");
@@ -167,8 +168,10 @@ public class WarManager {
         FlagInfo currentFlag = getFlagInfoOrNull(cell);
         if (currentFlag == null) return;
         cell.setUnderExtraTime(true);
-
-        Bukkit.getServer().broadcastMessage("Extra time of " + (currentFlag.getExtraTicks() / 20) + " begins now!");
+        if (currentFlag.getExtraTicks() != 0)
+        {
+            Bukkit.getServer().broadcastMessage("Extra time of " + (currentFlag.getExtraTicks() / 20) + " seconds begins now!");
+        }
 
         new BukkitRunnable() // no need for this to be persistent, as the flag gets lost upon restart anyway.
         {
@@ -204,7 +207,16 @@ public class WarManager {
 
     public void endWar(WarInfo warInfo)
     {
+        // this code throws errors and breaks the war system for some reason and i dont know if i care enough to try to debug it
+
+        for (var flag : warInfo.getCurrentFlags())
+            try{
+                FlagWar.attackCanceled(flag.getAttackData());
+
+            } catch (NullPointerException npe) {npe.printStackTrace();}
+
         warInfo.getEndWarRunnable().cancel();
+        transferOwnershipBack(warInfo.getAttackedTown(), ChunkCoordPair.getTownBlocks(warInfo.getStorableTownBlocks(), warInfo.getAttackedTown().getWorld()));
     }
 
     public WarInfo getWarInfoOrNull(String townName) {
@@ -229,25 +241,30 @@ public class WarManager {
         TownRuinUtil.putTownIntoRuinedState(warInfo.getAttackedTown());
         warInfo.setCurrentFlagState(WarInfo.FlagState.ruined);
         warInfo.getEndWarRunnable().cancel();
-        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.getTownOutOfRuinedState, 400, warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
+        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.getTownOutOfRuinedState, FlagWarConfig.getSecondsOfRuined()*20L, warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
+        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.unWarStateTown, FlagWarConfig.getSecondsOfInvincibility(), warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
+
     }
 
     public void winDefense(WarInfo warInfo) {
         // PasteChunk pasteChunk = new PasteChunk();
         // pasteChunk.pasteChunks(warInfo.getAttackedTown().getWorld(), warInfo.getAttackedTown());
         // removing these lines means that the pasting only happens when the fullyEndWar function runs in the PersistentRunnable.
+        endWar(warInfo);
         warInfo.setCurrentFlagState(WarInfo.FlagState.defended);
-        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.unWarStateTown, 400, warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
+        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.unWarStateTown, FlagWarConfig.getSecondsOfInvincibility(), warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
     }
 
     public void fullyEndWar(WarInfo warInfo)
     {
         Town attackedTown = warInfo.getAttackedTown();
+
         try {
             File warInfos = new File(JavaPlugin.getProvidingPlugin(this.getClass()).getDataFolder(), "ActiveWars.yml");
             YamlConfiguration config = YamlConfiguration.loadConfiguration(warInfos);
             config.set(String.valueOf(attackedTown.getUUID()), null);
             config.save(warInfos);
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -280,4 +297,26 @@ public class WarManager {
     public boolean hasActiveWar(UUID townID) {
         return getWarInfoOrNull(townID) != null;
     }
+
+    public void addExtraFlagLife(FlagInfo currentFlag, int extraTimeTicks)
+    {
+        currentFlag.setPotentialExtraLives(currentFlag.getPotentialExtraLives()-1);
+        currentFlag.setActualExtraLives(currentFlag.getActualExtraLives()+1);
+        currentFlag.setExtraTicks(currentFlag.getExtraTicks()+extraTimeTicks);
+    }
+
+    private void transferOwnershipBack(final Town attackedTown, final Collection<TownBlock> townBlocks) {
+        try {
+            for (var tb : townBlocks)
+            {
+                tb.setTown(attackedTown);
+                tb.save();
+            }
+        } catch (Exception te) {
+            // Couldn't claim it.
+            TownyMessaging.sendErrorMsg(te.getMessage());
+            te.printStackTrace();
+        }
+    }
+
 }

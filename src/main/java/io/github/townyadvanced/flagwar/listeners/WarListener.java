@@ -18,13 +18,10 @@ package io.github.townyadvanced.flagwar.listeners;
 
 import com.palmergames.bukkit.towny.TownyAPI;
 import com.palmergames.bukkit.towny.object.*;
-import io.github.townyadvanced.flagwar.FlagWar;
 import io.github.townyadvanced.flagwar.WarManager;
-import io.github.townyadvanced.flagwar.chunkManipulation.CopyChunk;
-import io.github.townyadvanced.flagwar.chunkManipulation.PasteChunk;
+import io.github.townyadvanced.flagwar.config.FlagWarConfig;
 import io.github.townyadvanced.flagwar.events.*;
 import io.github.townyadvanced.flagwar.objects.FlagInfo;
-import io.github.townyadvanced.flagwar.objects.PersistentRunnable;
 import io.github.townyadvanced.flagwar.objects.WarInfo;
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -62,10 +59,8 @@ public class WarListener implements Listener {
         server.broadcastMessage(ChatColor.BLUE + "[" + ChatColor.YELLOW + "FLAGWAR" + ChatColor.BLUE + "] " + ChatColor.WHITE + "The battle between " + e.getAttackingNation().getName() + " and " + e.getDefendingNation().getName() + " at " + e.getAttackedTown().getName() + " has ended!");
 
         if (e.getWarEndReason() == WarEndEvent.WarEndReason.timerRanOut) {
-
             warManager.winDefense(warInfo);
             server.broadcastMessage(ChatColor.BLUE + "[" + ChatColor.YELLOW + "FLAGWAR" + ChatColor.BLUE + "] " + ChatColor.WHITE + e.getDefendingNation().getName() + " has successfully defended " + e.getAttackedTown().getName() + " from " + e.getAttackingNation().getName() + "!");
-
 
         } else if (e.getWarEndReason() == WarEndEvent.WarEndReason.homeBlockCellWon) {
             warManager.loseDefense(warInfo);
@@ -99,7 +94,7 @@ public class WarListener implements Listener {
     }
 
     // this is the ugliest function in the entire codebase
-    // i really think ill just keep it like that if it works.
+    // i really think i'll just keep it like that if it works.
 
     @EventHandler
     public void onPotentialFlagLiveIncrease(PlayerInteractEvent e)
@@ -108,52 +103,73 @@ public class WarListener implements Listener {
         {
             Block potentialFlagBlock = e.getClickedBlock();
             TownBlock tb = TownyAPI.getInstance().getTownBlock(potentialFlagBlock.getLocation());
-            if (tb.getTownOrNull() == null || !warManager.hasActiveWar(tb.getTownOrNull())) return;
+
+            try{
+
+            if (   tb == null
+                || tb.getTownOrNull() == null
+                || !warManager.hasActiveWar(tb.getTownOrNull())) return;
+            } finally{}
 
             WarInfo warInfo = warManager.getWarInfoOrNull(tb.getTownOrNull());
             FlagInfo currentFlag = WarManager.getFlagInfoOrNull(warInfo, potentialFlagBlock.getLocation());
+
             if (currentFlag != null && currentFlag.getFlagBlock() != null && currentFlag.getFlagBlock().equals(potentialFlagBlock))
             {
                 ItemStack itemHeld = e.getPlayer().getInventory().getItemInMainHand();
                 Player p = e.getPlayer();
                 Resident r = TownyAPI.getInstance().getResident(p.getUniqueId());
-                if (itemHeld.getType() == Material.GOLD_INGOT
+
+                Material requiredMaterial = Material.valueOf(FlagWarConfig.getItemOfPaymentForFlagLives());
+
+                if (itemHeld.getType() == requiredMaterial
                     && (r.getNationOrNull().isAlliedWith(currentFlag.getFlagPlacer().getNationOrNull()) || r.getNationOrNull().equals(currentFlag.getFlagPlacer().getNationOrNull()))
                     && r.getNationRanks() != null)
                 {
-                    if (currentFlag.getPotentialExtraLives() == 2 && itemHeld.getAmount() >= 4)
+                    if (currentFlag.getPotentialExtraLives() == 3 && itemHeld.getAmount() >= FlagWarConfig.getPriceToIncreaseFlagLives(1))
                     {
-                        itemHeld.setAmount(itemHeld.getAmount()-4);
-                        p.getInventory().setItemInMainHand(itemHeld); // itemHeld is a copy, so we have to update it.
-                        p.sendMessage("You have exchanged 4 gold ingots for 1 extra life!");
-                        currentFlag.setPotentialExtraLives(1);
-                        currentFlag.setActualExtraLives(currentFlag.getActualExtraLives()+1);
-                        currentFlag.setExtraTicks(currentFlag.getExtraTicks()+300);
+                        int extraTimeTicks = FlagWarConfig.getExtraTimeSecondsPerFlagLife()*20;
+                        int price = FlagWarConfig.getPriceToIncreaseFlagLives(1);
 
-                        new BukkitRunnable()
-                        {
-                            @Override
-                            public void run()
-                            {
-                                currentFlag.setLivesFrozen(true);
-                            }
-                        }.runTaskLater(JavaPlugin.getProvidingPlugin(this.getClass()), 200);
+                        itemHeld.setAmount(itemHeld.getAmount()-price);
+                        p.getInventory().setItemInMainHand(itemHeld); // itemHeld is a copy, so we have to update it.
+                        p.sendMessage("You have exchanged " + price + " " + requiredMaterial.name().toLowerCase() + "s for 1 extra life!");
+
+                        warManager.addExtraFlagLife(currentFlag, extraTimeTicks);
+
+                        long delay = FlagWarConfig.getSecondsUntilLockedFlagLives()* 20L;
+                        System.out.println(delay);
+                        new BukkitRunnable() {@Override public void run() {currentFlag.setLivesFrozen(true);}}.runTaskLater(JavaPlugin.getProvidingPlugin(this.getClass()), delay);
 
                     }
-                    else if (currentFlag.getPotentialExtraLives() == 1 && itemHeld.getAmount() >= 16 && !currentFlag.isLivesFrozen())
+
+                    else if (currentFlag.getPotentialExtraLives() == 2 && itemHeld.getAmount() >= FlagWarConfig.getPriceToIncreaseFlagLives(2) && !currentFlag.isLivesFrozen())
                     {
-                        itemHeld.setAmount(itemHeld.getAmount()-16);
+                        int price = FlagWarConfig.getPriceToIncreaseFlagLives(2);
+                        int extraTimeTicks = FlagWarConfig.getExtraTimeSecondsPerFlagLife()*20;
+
+                        itemHeld.setAmount(itemHeld.getAmount()-price);
                         p.getInventory().setItemInMainHand(itemHeld); // itemHeld is a copy, so we have to update it.
-                        p.sendMessage("You have exchanged 16 gold ingots for 1 extra life!");
-                        currentFlag.setPotentialExtraLives(0);
-                        currentFlag.setActualExtraLives(currentFlag.getActualExtraLives()+1);
-                        currentFlag.setExtraTicks(currentFlag.getExtraTicks()+300);
+                        p.sendMessage("You have exchanged " + price + " " + requiredMaterial.name().toLowerCase() + "s for 1 extra life!");
+
+                        warManager.addExtraFlagLife(currentFlag, extraTimeTicks);
+                    }
+
+                    else if (currentFlag.getPotentialExtraLives() == 1 && itemHeld.getAmount() >= FlagWarConfig.getPriceToIncreaseFlagLives(3) && !currentFlag.isLivesFrozen())
+                    {
+                        int price = FlagWarConfig.getPriceToIncreaseFlagLives(3);
+                        int extraTimeTicks = FlagWarConfig.getExtraTimeSecondsPerFlagLife()*20;
+
+                        itemHeld.setAmount(itemHeld.getAmount()-price);
+                        p.getInventory().setItemInMainHand(itemHeld); // itemHeld is a copy, so we have to update it.
+                        p.sendMessage("You have exchanged " + price + " " + requiredMaterial.name().toLowerCase() + "s for 1 extra life!");
+
+                        warManager.addExtraFlagLife(currentFlag, extraTimeTicks);
                     }
                 }
             }
         }
     }
-
 
     @EventHandler
     public void onEligibleToFlag(EligibleToFlagEvent e)
