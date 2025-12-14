@@ -200,3 +200,6 @@ battle_timings:
     # How long a town is ruined after it loses a defense.
     seconds_town_is_ruined: 900 # 15 minutes
 
+    # How long a banner becomes invincible after losing a life.
+    seconds_after_attack_defending: 1
+

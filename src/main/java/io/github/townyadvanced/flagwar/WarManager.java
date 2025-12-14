@@ -27,6 +27,9 @@ import io.github.townyadvanced.flagwar.chunkManipulation.CopyChunk;
 import io.github.townyadvanced.flagwar.chunkManipulation.PasteChunk;
 import io.github.townyadvanced.flagwar.config.FlagWarConfig;
 import io.github.townyadvanced.flagwar.events.CellWonEvent;
+import io.github.townyadvanced.flagwar.events.EligibleToFlagEvent;
+import io.github.townyadvanced.flagwar.events.WarEndEvent;
+import io.github.townyadvanced.flagwar.events.WarStartEvent;
 import io.github.townyadvanced.flagwar.objects.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -113,11 +116,12 @@ public class WarManager {
 
     public void startWar(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, WarInfo.FlagState flagState, boolean writeToYML)
     {
-        Bukkit.getServer().broadcastMessage("The war will last " + (FlagWarConfig.getSecondsOfFlag()*20L+FlagWarConfig.getSecondsOfPreFlag()*20L)/20 + " seconds!");
+
         PersistentRunnable runnable = new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.endWarDueToTimeUp, (FlagWarConfig.getSecondsOfFlag()*20L+FlagWarConfig.getSecondsOfPreFlag()*20L), attackedTown.getWorld().getUID(), new String[] {attackedTown.getName()});
         copyChunk.copyChunks(attackedTown.getWorld(), attackedTown);
         WarInfo warInfo = new WarInfo(attackedTown, attackingNation, defendingNation, initialMayor, flagState, runnable, writeToYML);
         putIntoWarInfosMap(attackedTown.getUUID(), warInfo);
+        Bukkit.getServer().getPluginManager().callEvent(new WarStartEvent(attackedTown, attackingNation, defendingNation));
     }
 
     public void sanityCheck()
@@ -176,10 +180,8 @@ public class WarManager {
         new BukkitRunnable() // no need for this to be persistent, as the flag gets lost upon restart anyway.
         {
             public void run() {
-                System.out.println("Successfully run!");
                 cell.setUnderExtraTime(false);
-                var cellWonEvent = new CellWonEvent(cell);
-                Bukkit.getServer().getPluginManager().callEvent(cellWonEvent);
+                Bukkit.getServer().getPluginManager().callEvent(new CellWonEvent(cell));
                 cell.cancel();
                 FlagWar.removeCellUnderAttack(cell);
                 getFlagInfoOrNull(cell);
@@ -207,13 +209,8 @@ public class WarManager {
 
     public void endWar(WarInfo warInfo)
     {
-        // this code throws errors and breaks the war system for some reason and i dont know if i care enough to try to debug it
-
         for (var flag : warInfo.getCurrentFlags())
-            try{
-                FlagWar.attackCanceled(flag.getAttackData());
-
-            } catch (NullPointerException npe) {npe.printStackTrace();}
+            try{FlagWar.attackCanceled(flag.getAttackData());} catch (NullPointerException npe) {npe.printStackTrace();}
 
         warInfo.getEndWarRunnable().cancel();
         transferOwnershipBack(warInfo.getAttackedTown(), ChunkCoordPair.getTownBlocks(warInfo.getStorableTownBlocks(), warInfo.getAttackedTown().getWorld()));
@@ -236,6 +233,7 @@ public class WarManager {
 
     public void loseDefense(WarInfo warInfo) {
 
+        Bukkit.getServer().getPluginManager().callEvent(new WarEndEvent(warInfo.getAttackedTown(), warInfo.getAttackingNation(), warInfo.getDefendingNation(), WarEndEvent.WarEndReason.homeBlockCellWon));
         endWar(warInfo);
 
         TownRuinUtil.putTownIntoRuinedState(warInfo.getAttackedTown());
@@ -243,16 +241,20 @@ public class WarManager {
         warInfo.getEndWarRunnable().cancel();
         new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.getTownOutOfRuinedState, FlagWarConfig.getSecondsOfRuined()*20L, warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
         new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.unWarStateTown, FlagWarConfig.getSecondsOfInvincibility(), warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
-
     }
 
     public void winDefense(WarInfo warInfo) {
-        // PasteChunk pasteChunk = new PasteChunk();
-        // pasteChunk.pasteChunks(warInfo.getAttackedTown().getWorld(), warInfo.getAttackedTown());
-        // removing these lines means that the pasting only happens when the fullyEndWar function runs in the PersistentRunnable.
+        Bukkit.getServer().getPluginManager().callEvent(new WarEndEvent(warInfo.getAttackedTown(), warInfo.getAttackingNation(), warInfo.getDefendingNation(), WarEndEvent.WarEndReason.timerRanOut));
         endWar(warInfo);
         warInfo.setCurrentFlagState(WarInfo.FlagState.defended);
         new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.unWarStateTown, FlagWarConfig.getSecondsOfInvincibility(), warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
+    }
+
+    public void makeEligibleToFlag(WarInfo warInfo)
+    {
+        getWarInfoOrNull(warInfo.getAttackedTown()).setCurrentFlagState(WarInfo.FlagState.flag);
+        EligibleToFlagEvent eligibleToFlagEvent = new EligibleToFlagEvent(warInfo.getAttackedTown(), warInfo.getAttackingNation(), warInfo.getDefendingNation());
+        Bukkit.getServer().getPluginManager().callEvent(eligibleToFlagEvent);
     }
 
     public void fullyEndWar(WarInfo warInfo)

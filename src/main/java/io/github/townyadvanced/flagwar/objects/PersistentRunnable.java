@@ -42,7 +42,6 @@ public class PersistentRunnable {
         endWarDueToTimeUp,
     }
 
-
     JavaPlugin plugin = JavaPlugin.getProvidingPlugin(this.getClass());
 
     String path;
@@ -149,32 +148,37 @@ public class PersistentRunnable {
         WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
 
         WarInfo warInfo = warManager.getWarInfoOrNull(townName);
-        Town attackedTown = warInfo.getAttackedTown();
-        System.out.println(warInfo.getInitialMayor());
-        TownRuinUtil.reclaimTown(warInfo.getInitialMayor(), attackedTown);
+        if (warInfo.getCurrentFlagState() == WarInfo.FlagState.ruined)
+        {
+            Town attackedTown = warInfo.getAttackedTown();
+            System.out.println(warInfo.getInitialMayor());
+            TownRuinUtil.reclaimTown(warInfo.getInitialMayor(), attackedTown);
+        }
     }
 
     void unWarStateTown(String townName) {
         WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
-
         WarInfo warInfo = warManager.getWarInfoOrNull(townName);
+
         warManager.fullyEndWar(warInfo);
     }
 
     void flagStateTown(String townName)
     {
         WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
-
         WarInfo warInfo = warManager.getWarInfoOrNull(townName);
-        EligibleToFlagEvent eligibleToFlagEvent = new EligibleToFlagEvent(warInfo.getAttackedTown(), warInfo.getAttackingNation(), warInfo.getDefendingNation());
-        Bukkit.getServer().getPluginManager().callEvent(eligibleToFlagEvent);
+
+        warManager.makeEligibleToFlag(warInfo);
     }
 
     void endWarDueToTimeUp(String townName)
     {
         WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
-
         WarInfo warInfo = warManager.getWarInfoOrNull(townName);
-        Bukkit.getServer().getPluginManager().callEvent(new WarEndEvent(warInfo.getAttackedTown(), warInfo.getAttackingNation(), warInfo.getDefendingNation(), WarEndEvent.WarEndReason.timerRanOut));
+
+        if (warInfo.getCurrentFlagState() == WarInfo.FlagState.flag)
+        {
+            warManager.winDefense(warInfo);
+        }
     }
 }

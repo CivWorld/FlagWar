@@ -35,6 +35,7 @@ import com.palmergames.bukkit.towny.scheduling.impl.FoliaTaskScheduler;
 import com.palmergames.bukkit.towny.utils.AreaSelectionUtil;
 import com.palmergames.bukkit.util.Version;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.github.townyadvanced.flagwar.command.ComPhaseAdvance;
 import io.github.townyadvanced.flagwar.command.TownyAdminReloadAddon;
 import io.github.townyadvanced.flagwar.config.ConfigLoader;
 import io.github.townyadvanced.flagwar.config.FlagWarConfig;
@@ -47,7 +48,6 @@ import io.github.townyadvanced.flagwar.listeners.*;
 import io.github.townyadvanced.flagwar.objects.Cell;
 import io.github.townyadvanced.flagwar.objects.CellUnderAttack;
 
-import java.io.File;
 import java.io.IOException;
 
 import java.math.BigDecimal;
@@ -58,18 +58,17 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import io.github.townyadvanced.flagwar.objects.FlagInfo;
-import io.github.townyadvanced.flagwar.objects.PersistentRunnable;
 import io.github.townyadvanced.flagwar.util.Messaging;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
 /**
  * The main class of the TownyAdvanced: FlagWar addon. Houses core functionality.
@@ -148,6 +147,9 @@ public class FlagWar extends JavaPlugin {
 
         warManager = new WarManager();
         initializeListeners();
+
+        getCommand("PhaseAdvance").setExecutor(new ComPhaseAdvance());
+
         loadFlagWarMaterials();
         registerEvents();
         bStatsKickstart();
@@ -423,6 +425,14 @@ public class FlagWar extends JavaPlugin {
         if (!WarManager.decrementAndCheckifDead(currentFlag))
         {
             player.sendMessage("Forcefield destroyed! There are " + (currentFlag.getActualExtraLives()+1) + " lives left!");
+            currentFlag.getFlagBlock().setType(Material.BEDROCK);
+            new BukkitRunnable()
+            {
+                @Override
+                public void run() {
+                    currentFlag.getAttackData().updateFlag();             }
+            }.runTaskLater(plugin, FlagWarConfig.getImmunitySecondsAfterAttackDefending()*20L);
+
             return;
         }
 

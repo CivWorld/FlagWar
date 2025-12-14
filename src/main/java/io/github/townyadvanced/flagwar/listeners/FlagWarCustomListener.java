@@ -36,6 +36,7 @@ import com.palmergames.bukkit.towny.object.economy.transaction.TransactionType;
 import com.palmergames.bukkit.towny.object.WorldCoord;
 import io.github.townyadvanced.flagwar.FlagWar;
 import io.github.townyadvanced.flagwar.FlagWarAPI;
+import io.github.townyadvanced.flagwar.WarManager;
 import io.github.townyadvanced.flagwar.config.FlagWarConfig;
 import io.github.townyadvanced.flagwar.events.*;
 import io.github.townyadvanced.flagwar.i18n.Translate;
@@ -45,6 +46,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
@@ -193,7 +195,8 @@ public class FlagWarCustomListener implements Listener {
             transferOrUnclaimOrKeepTownblock(attackingTown, townBlock, defendingTown);
 
             // checks if this is the homeblock.
-            if (townBlock.isHomeBlock()) {Bukkit.getServer().getPluginManager().callEvent(new WarEndEvent(defendingTown, attackingNation, defendingTown.getNationOrNull(), WarEndEvent.WarEndReason.homeBlockCellWon));}
+            WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
+            if (townBlock.isHomeBlock()) warManager.loseDefense(warManager.getWarInfoOrNull(townBlock.getTown()));
 
             // Cleanup
             towny.updateCache(worldCoord);

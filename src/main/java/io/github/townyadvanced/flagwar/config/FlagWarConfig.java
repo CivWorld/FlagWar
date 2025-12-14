@@ -639,4 +639,9 @@ public final class FlagWarConfig {
     {
         return PLUGIN.getConfig().getInt(("battle_timings.seconds_town_is_ruined"));
     }
+
+    public static int getImmunitySecondsAfterAttackDefending()
+    {
+        return PLUGIN.getConfig().getInt(("battle_timings.seconds_after_attack_defending"));
+    }
 }

@@ -83,9 +83,9 @@ public class ChunkCoordPair
     public static ArrayList<ChunkCoordPair> getListOfChunkCoords(String coordDelimiter, String TBDelimiter, String s) {
 
         ArrayList<ChunkCoordPair> chunkCoordPairs = new ArrayList<>();
-        String[] s1 = s.split(TBDelimiter);
+        String[] coord = s.split(TBDelimiter);
 
-        for (var item : s1) {
+        for (var item : coord) {
             chunkCoordPairs.add(ChunkCoordPair.of(item, coordDelimiter));
         }
         return chunkCoordPairs;

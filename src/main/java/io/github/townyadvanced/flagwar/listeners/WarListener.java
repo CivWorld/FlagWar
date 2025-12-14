@@ -48,22 +48,19 @@ public class WarListener implements Listener {
     @EventHandler
     public void onWarStart(WarStartEvent e) {
         server.broadcastMessage(ChatColor.BLUE + "[" + ChatColor.YELLOW + "FLAGWAR" + ChatColor.BLUE + "] " + ChatColor.WHITE + e.getAttackingNation().getName() + " has initiated a battle on " + e.getDefendingNation().getName() + " at " + e.getAttackedTown().getName() + "!");
+        server.broadcastMessage("The war will last " + (FlagWarConfig.getSecondsOfFlag()*20L+FlagWarConfig.getSecondsOfPreFlag()*20L)/20 + " seconds!");
 
-        warManager.startWar(e.getAttackedTown(), e.getAttackingNation(), e.getDefendingNation(), e.getAttackedTown().getMayor(), WarInfo.FlagState.preFlag, true);
     }
 
     @EventHandler
     public void onWarEnd(WarEndEvent e) {
-        WarInfo warInfo = warManager.getWarInfoOrNull(e.getAttackedTown().getUUID());
 
         server.broadcastMessage(ChatColor.BLUE + "[" + ChatColor.YELLOW + "FLAGWAR" + ChatColor.BLUE + "] " + ChatColor.WHITE + "The battle between " + e.getAttackingNation().getName() + " and " + e.getDefendingNation().getName() + " at " + e.getAttackedTown().getName() + " has ended!");
 
         if (e.getWarEndReason() == WarEndEvent.WarEndReason.timerRanOut) {
-            warManager.winDefense(warInfo);
             server.broadcastMessage(ChatColor.BLUE + "[" + ChatColor.YELLOW + "FLAGWAR" + ChatColor.BLUE + "] " + ChatColor.WHITE + e.getDefendingNation().getName() + " has successfully defended " + e.getAttackedTown().getName() + " from " + e.getAttackingNation().getName() + "!");
 
         } else if (e.getWarEndReason() == WarEndEvent.WarEndReason.homeBlockCellWon) {
-            warManager.loseDefense(warInfo);
             server.broadcastMessage(ChatColor.BLUE + "[" + ChatColor.YELLOW + "FLAGWAR" + ChatColor.BLUE + "] " + ChatColor.WHITE + e.getAttackingNation().getName() + " has successfully conquered " + e.getAttackedTown().getName() + " from " + e.getDefendingNation().getName() + "! The attacker now has free-range over the town!");
         }
     }
@@ -80,8 +77,8 @@ public class WarListener implements Listener {
     {
         TownBlock tb = TownyAPI.getInstance().getTownBlock(e.getCellUnderAttack().getFlagBaseBlock().getLocation());
         String flagPlacer = e.getCellUnderAttack().getNameOfFlagOwner();
-        WarInfo currentWar = warManager.getWarInfoOrNull(tb.getTownOrNull());
-        warManager.removeFlagFromWar(currentWar, flagPlacer);
+        WarInfo warInfo = warManager.getWarInfoOrNull(tb.getTownOrNull());
+        warManager.removeFlagFromWar(warInfo, flagPlacer);
     }
 
     @EventHandler
@@ -104,12 +101,10 @@ public class WarListener implements Listener {
             Block potentialFlagBlock = e.getClickedBlock();
             TownBlock tb = TownyAPI.getInstance().getTownBlock(potentialFlagBlock.getLocation());
 
-            try{
-
             if (   tb == null
                 || tb.getTownOrNull() == null
                 || !warManager.hasActiveWar(tb.getTownOrNull())) return;
-            } finally{}
+
 
             WarInfo warInfo = warManager.getWarInfoOrNull(tb.getTownOrNull());
             FlagInfo currentFlag = WarManager.getFlagInfoOrNull(warInfo, potentialFlagBlock.getLocation());
@@ -174,7 +169,6 @@ public class WarListener implements Listener {
     @EventHandler
     public void onEligibleToFlag(EligibleToFlagEvent e)
     {
-        warManager.getWarInfoOrNull(e.getAttackedTown()).setCurrentFlagState(WarInfo.FlagState.flag);
         server.broadcastMessage(e.getAttackedTown().getName() + "'s flag state is now ON. You may now flag!");
     }
 }

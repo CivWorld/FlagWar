@@ -96,7 +96,7 @@ public class FlagWarBlockListener implements Listener {
         }
 
         e.setCancelled(false);
-        Bukkit.getServer().getPluginManager().callEvent(new WarStartEvent(victimTown, enemy.getNationOrNull(), victimTown.getNationOrNull()));
+        warManager.startWar(victimTown, enemy.getNationOrNull(), victimTown.getNationOrNull(), victimTown.getMayor(), WarInfo.FlagState.preFlag, true);
 
         new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.flagStateTown, FlagWarConfig.getSecondsOfPreFlag()*20L, victimTown.getWorld().getUID(), new String[] {victimTown.getName()});
     }

@@ -265,11 +265,8 @@ public class CellUnderAttack extends Cell {
             Collection<FlagInfo> currentFlags = warManager.getWarInfoOrNull(TownyAPI.getInstance().getTown(flagBaseBlock.getLocation())).getCurrentFlags();
 
                 for (var flag : currentFlags)
-
                     if (flag.getFlagPlacer().getName().equalsIgnoreCase(this.getNameOfFlagOwner()))
-                    {
-                    flag.setAttackData(this);
-                }
+                        flag.setAttackData(this);
 
             flagTimerBlock.setType(timer[flagPhaseID]);
             LOGGER.log(Level.INFO, () ->
