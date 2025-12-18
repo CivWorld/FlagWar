@@ -16,6 +16,9 @@
 
 package io.github.townyadvanced.flagwar.chunkManipulation;
 
+// this class contains enough informaton to fully reconstruct a chunk.
+// this is without storing nbt data.
+
 public class PendingChunk
 {
     private String[] materials;
@@ -37,6 +40,7 @@ public class PendingChunk
         z = Z;
     }
 
+    public PendingChunk(){}
     public int getX() {return x;}
     public int getZ() {return z;}
     public String[] getMaterials() {return materials;}

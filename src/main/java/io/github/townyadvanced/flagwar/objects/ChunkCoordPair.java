@@ -43,7 +43,6 @@ public class ChunkCoordPair
         {
             collection.add(new ChunkCoordPair(item.getX(), item.getZ()));
         }
-
         return collection;
     }
 

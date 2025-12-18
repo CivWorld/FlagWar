@@ -20,7 +20,6 @@ import com.palmergames.bukkit.towny.object.Town;
 import com.palmergames.bukkit.towny.utils.TownRuinUtil;
 import io.github.townyadvanced.flagwar.FlagWar;
 import io.github.townyadvanced.flagwar.WarManager;
-import io.github.townyadvanced.flagwar.chunkManipulation.PasteChunk;
 import io.github.townyadvanced.flagwar.events.EligibleToFlagEvent;
 import io.github.townyadvanced.flagwar.events.WarEndEvent;
 import io.github.townyadvanced.flagwar.listeners.WarListener;
@@ -57,7 +56,7 @@ public class PersistentRunnable {
         this.action = action;
         this.worldID = worldID;
         this.arguments = arguments;
-        this.path = (plugin.getDataFolder() + "/runnables/" + action.toString() + "_" + executionTime);
+        this.path = (plugin.getDataFolder() + "/runnables/" + action.toString() + "_" + executionTime + "_" + UUID.randomUUID());
         File runnableFile = new File(this.path);
 
         try (BufferedWriter w = new BufferedWriter(new FileWriter(runnableFile))) {
@@ -134,39 +133,40 @@ public class PersistentRunnable {
                     default:
                         System.out.println("Error. There is no such action as " + action + "!");
                 }
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    throw new RuntimeException(e);
-                }
+                this.cancel();
             }
         }.runTaskLater(plugin, duration).getTaskId();
     }
+
     // should these be static?
     void getTownOutOfRuinedState(String townName) {
         WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
-
         WarInfo warInfo = warManager.getWarInfoOrNull(townName);
-        if (warInfo.getCurrentFlagState() == WarInfo.FlagState.ruined)
-        {
-            Town attackedTown = warInfo.getAttackedTown();
-            System.out.println(warInfo.getInitialMayor());
-            TownRuinUtil.reclaimTown(warInfo.getInitialMayor(), attackedTown);
-        }
+
+        if (warInfo == null || warInfo.getCurrentFlagState() != WarInfo.FlagState.ruined)
+            return;
+
+        Town attackedTown = warInfo.getAttackedTown();
+        System.out.println(warInfo.getInitialMayor());
+        TownRuinUtil.reclaimTown(warInfo.getInitialMayor(), attackedTown);
     }
 
     void unWarStateTown(String townName) {
         WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
         WarInfo warInfo = warManager.getWarInfoOrNull(townName);
 
+        if (warInfo == null || warInfo.getCurrentFlagState() != WarInfo.FlagState.defended || warInfo.getCurrentFlagState() != WarInfo.FlagState.ruined)
+            return;
+
         warManager.fullyEndWar(warInfo);
     }
 
-    void flagStateTown(String townName)
-    {
+    void flagStateTown(String townName) {
         WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
         WarInfo warInfo = warManager.getWarInfoOrNull(townName);
+
+        if (warInfo == null || warInfo.getCurrentFlagState() != WarInfo.FlagState.preFlag)
+            return;
 
         warManager.makeEligibleToFlag(warInfo);
     }
@@ -176,9 +176,10 @@ public class PersistentRunnable {
         WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
         WarInfo warInfo = warManager.getWarInfoOrNull(townName);
 
-        if (warInfo.getCurrentFlagState() == WarInfo.FlagState.flag)
-        {
-            warManager.winDefense(warInfo);
-        }
+        if (warInfo == null || warInfo.getCurrentFlagState() != WarInfo.FlagState.flag)
+            return;
+
+
+        warManager.winDefense(warInfo);
     }
 }

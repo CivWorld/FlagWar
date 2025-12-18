@@ -203,3 +203,18 @@ battle_timings:
     # How long a banner becomes invincible after losing a life.
     seconds_after_attack_defending: 1
 
+chunk_manipulation:
+    # Unless you absolutely know what you're doing, it is recommended to keep these values as they are.
+
+    # How large a batch of chunks that are read and then pasted at a time is.
+    # Higher values have a more adverse effect on server TPS, but process more chunks at a time.
+    chunk_paste_batch_size: 10
+
+    # How fast pending chunks are read before being pasted.
+    # Higher values take up the computer's resources more, but read chunks faster.
+    # Note that their effect on server tps is not as severe, as they do not run on the main thread.
+    active_tasks_per_batch_read: 25
+
+    # How many chunks are pasted per tick.
+    # Higher values have a more adverse effect on server tps, but paste more chunks in one tick.
+    chunks_pasted_per_tick: 5

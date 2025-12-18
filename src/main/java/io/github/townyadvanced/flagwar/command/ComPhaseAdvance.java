@@ -51,7 +51,7 @@ public class ComPhaseAdvance implements CommandExecutor
         {
             case preFlag: warManager.makeEligibleToFlag(warInfo); break;
             case flag: warManager.winDefense(warInfo); break;
-            case defended: warManager.fullyEndWar(warInfo); break;
+            case ruined, defended: warManager.fullyEndWar(warInfo); break;
         }
         return true;
     }

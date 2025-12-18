@@ -21,12 +21,12 @@ folia-supported: true
 softdepend:
     - HolographicDisplays
 
+depend:
+    - Towny
+
 commands:
     PhaseAdvance:
         description: Advances the phase of a war. E.g. Pre-Flag --> Flag
         usage: /<command> <TownName>
         aliases:
             - pa
-
-depend:
-    - Towny

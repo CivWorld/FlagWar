@@ -644,4 +644,19 @@ public final class FlagWarConfig {
     {
         return PLUGIN.getConfig().getInt(("battle_timings.seconds_after_attack_defending"));
     }
+
+    public static int getChunkPasteBatchSize()
+    {
+        return PLUGIN.getConfig().getInt(("chunk_manipulation.chunk_paste_batch_size"));
+    }
+
+    public static int getActiveTasksPerBatchRead()
+    {
+        return PLUGIN.getConfig().getInt("chunk_manipulation.active_tasks_per_batch_read");
+    }
+
+    public static int getChunksPastedPerTick()
+    {
+        return PLUGIN.getConfig().getInt("chunk_manipulation.chunks_pasted_per_tick");
+    }
 }

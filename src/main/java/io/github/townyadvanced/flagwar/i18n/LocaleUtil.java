@@ -18,6 +18,7 @@ package io.github.townyadvanced.flagwar.i18n;
 
 import io.github.townyadvanced.flagwar.FlagWar;
 import io.github.townyadvanced.flagwar.util.Messaging;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.URL;
@@ -95,7 +96,7 @@ public final class LocaleUtil {
 
     private static void finalizeSetup(final Logger logger, final Locale locale) {
         setLocale(locale);
-        var msg = ResourceBundle.getBundle("Translation", getLocale());
+        var msg = ResourceBundle.getBundle("Translation", getLocale(), FlagWar.class.getClassLoader());
         setMessages(msg);
         var usingLocale = String.format("Using locale: %s - %s",
             getMessages().getString("locale"), getMessages().getString("locale-version"));

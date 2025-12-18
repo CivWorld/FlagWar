@@ -33,7 +33,6 @@ import io.github.townyadvanced.flagwar.events.WarStartEvent;
 import io.github.townyadvanced.flagwar.objects.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -48,8 +47,6 @@ import java.util.*;
 public class WarManager {
     static Plugin plugin = FlagWar.getInstance();
     HashMap<UUID, WarInfo> war_infos = new HashMap<>();
-    CopyChunk copyChunk = new CopyChunk();
-    PasteChunk pasteChunk = new PasteChunk();
 
 
     public WarManager() {
@@ -57,29 +54,24 @@ public class WarManager {
         try { populateWarInfosMap(); } catch (IOException e) {e.printStackTrace();}
         File runnablesFolder = new File(plugin.getDataFolder(), "runnables");
 
-        try {
-            if (!runnablesFolder.exists())
-            {
-                runnablesFolder.getParentFile().mkdirs();
-                runnablesFolder.createNewFile();
-            }
-        } catch (IOException e) { e.printStackTrace(); }
+        if (!runnablesFolder.exists())
+            runnablesFolder.mkdirs();
 
-        ArrayList<File> listOfRunnables = new ArrayList<>(List.of(runnablesFolder.listFiles()));
+        File[] listOfRunnables = runnablesFolder.listFiles();
 
-        if (listOfRunnables.isEmpty()) {
+        if (listOfRunnables == null || listOfRunnables.length == 0) {
             System.out.println("runnables file is null, implying no active wars present.");
             return;
         }
 
-        for (var runnable : listOfRunnables) new PersistentRunnable(runnable.getPath());
+        for (var runnable : listOfRunnables)
+            new PersistentRunnable(runnable.getPath());
     }
 
 
     public void populateWarInfosMap() throws IOException {
 
         File warInfos = new File(plugin.getDataFolder(), "ActiveWars.yml");
-        YamlConfiguration wc = YamlConfiguration.loadConfiguration(warInfos);
 
         if (!warInfos.exists()) {
             try {
@@ -90,6 +82,7 @@ public class WarManager {
             }
         }
 
+        YamlConfiguration wc = YamlConfiguration.loadConfiguration(warInfos);
         for (var key : wc.getKeys(false)) {
 
             Town attackedTown = TownyAPI.getInstance().getTown(UUID.fromString(key));
@@ -116,7 +109,8 @@ public class WarManager {
 
     public void startWar(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, WarInfo.FlagState flagState, boolean writeToYML)
     {
-
+        CopyChunk copyChunk = new CopyChunk();
+        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.flagStateTown, FlagWarConfig.getSecondsOfPreFlag()*20L, attackedTown.getWorld().getUID(), new String[] {attackedTown.getName()});
         PersistentRunnable runnable = new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.endWarDueToTimeUp, (FlagWarConfig.getSecondsOfFlag()*20L+FlagWarConfig.getSecondsOfPreFlag()*20L), attackedTown.getWorld().getUID(), new String[] {attackedTown.getName()});
         copyChunk.copyChunks(attackedTown.getWorld(), attackedTown);
         WarInfo warInfo = new WarInfo(attackedTown, attackingNation, defendingNation, initialMayor, flagState, runnable, writeToYML);
@@ -259,6 +253,7 @@ public class WarManager {
 
     public void fullyEndWar(WarInfo warInfo)
     {
+        PasteChunk pasteChunk = new PasteChunk();
         Town attackedTown = warInfo.getAttackedTown();
 
         try {
@@ -270,8 +265,7 @@ public class WarManager {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        pasteChunk.pasteChunks(attackedTown.getWorld(), attackedTown);
+        pasteChunk.initiatePaste(warInfo.getStorableTownBlocks(), FlagWarConfig.getChunkPasteBatchSize(), attackedTown.getWorld());
         war_infos.remove(warInfo.getAttackedTown().getUUID());
     }
 
