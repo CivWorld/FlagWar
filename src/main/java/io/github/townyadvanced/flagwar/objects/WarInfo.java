@@ -3,7 +3,6 @@ package io.github.townyadvanced.flagwar.objects;
 import com.palmergames.bukkit.towny.object.Nation;
 import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
-import org.bukkit.World;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -27,12 +26,12 @@ public class WarInfo {
     private final Nation attackingNation;
     private final Nation defendingNation;
     private final Resident initialMayor;
-    private ArrayList<FlagInfo> activeFlags;
+    private final ArrayList<FlagInfo> activeFlags;
     private FlagState currentFlagState;
-    private final PersistentRunnable endWarRunnable;
+    private PersistentRunnable currentRunnable;
     private final Collection<ChunkCoordPair> storableTownBlocks;
 
-    public WarInfo(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, FlagState flagState, PersistentRunnable endWarRunnable, Collection<ChunkCoordPair> chunkCoordPairs)
+    public WarInfo(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, FlagState flagState, PersistentRunnable currentRunnable, Collection<ChunkCoordPair> chunkCoordPairs)
     {
         this.attackedTown = attackedTown;
         this.attackingNation = attackingNation;
@@ -40,18 +39,18 @@ public class WarInfo {
         this.initialMayor = initialMayor;
         currentFlagState = flagState;
         activeFlags = new ArrayList<>();
-        this.endWarRunnable = endWarRunnable;
+        this.currentRunnable = currentRunnable;
         this.storableTownBlocks = chunkCoordPairs;
     }
 
-    public WarInfo(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, FlagState flagState, PersistentRunnable endWarRunnable, boolean writeToYML) {
+    public WarInfo(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, FlagState flagState, PersistentRunnable currentRunnable, boolean writeToYML) {
         this.attackedTown = attackedTown;
         this.attackingNation = attackingNation;
         this.defendingNation = defendingNation;
         this.initialMayor = initialMayor;
         currentFlagState = flagState;
         activeFlags = new ArrayList<>();
-        this.endWarRunnable = endWarRunnable;
+        this.currentRunnable = currentRunnable;
         this.storableTownBlocks = ChunkCoordPair.of(attackedTown.getTownBlocks());
 
         if (writeToYML)
@@ -66,8 +65,10 @@ public class WarInfo {
                 warInfoConfig.set(key + ".defendingNation", defendingNation.getName());
                 warInfoConfig.set(key + ".initialMayor", attackedTown.getMayor().getUUID().toString());
                 warInfoConfig.set(key + ".flagState", flagState.toString());
-                warInfoConfig.set(key + ".pathOfEndWarRunnable", endWarRunnable.getPathAsString());
+                warInfoConfig.set(key + ".currentRunnable", currentRunnable.getPathAsString());
                 warInfoConfig.set(key + ".townBlocks", ChunkCoordPair.getStringCoordsOfCollection(",", ";", storableTownBlocks));
+
+
 
                 warInfoConfig.save(warInfoFile);
             } catch (IOException e) {
@@ -82,7 +83,24 @@ public class WarInfo {
     public Nation getDefendingNation() {return defendingNation;}
     public ArrayList<FlagInfo> getCurrentFlags() {return activeFlags;}
     public FlagState getCurrentFlagState() {return currentFlagState;}
-    public PersistentRunnable getEndWarRunnable() {return this.endWarRunnable;}
+    public PersistentRunnable getCurrentRunnable() {return this.currentRunnable;}
+    public void setCurrentRunnable(PersistentRunnable currentRunnable)
+    {
+        this.currentRunnable = currentRunnable;
+        File warInfos = new File(JavaPlugin.getProvidingPlugin(this.getClass()).getDataFolder(), "ActiveWars.yml");
+        if (warInfos.exists())
+        {
+            String path = currentRunnable != null ? currentRunnable.getPathAsString() : null;
+            try {
+                YamlConfiguration config = YamlConfiguration.loadConfiguration(warInfos);
+                config.set(attackedTown.getUUID() + ".currentRunnable", path);
+                config.save(warInfos);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+    }
     public Collection<ChunkCoordPair> getStorableTownBlocks() {return storableTownBlocks;}
 
     public void setCurrentFlagState(FlagState currentFlagState)
@@ -92,15 +110,12 @@ public class WarInfo {
         if (warInfos.exists())
         {
             try {
-                warInfos.createNewFile();
                 YamlConfiguration config = YamlConfiguration.loadConfiguration(warInfos);
                 config.set(attackedTown.getUUID() + ".flagState", currentFlagState.toString());
                 config.save(warInfos);
-                return;
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
-            warInfos.getParentFile().mkdirs();
     }
 }

@@ -40,8 +40,6 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 
 public class WarManager {
@@ -51,70 +49,63 @@ public class WarManager {
 
     public WarManager() {
 
-        try { populateWarInfosMap(); } catch (IOException e) {e.printStackTrace();}
         File runnablesFolder = new File(plugin.getDataFolder(), "runnables");
 
         if (!runnablesFolder.exists())
             runnablesFolder.mkdirs();
 
-        File[] listOfRunnables = runnablesFolder.listFiles();
+        File[] runnables = runnablesFolder.listFiles();
 
-        if (listOfRunnables == null || listOfRunnables.length == 0) {
-            System.out.println("runnables file is null, implying no active wars present.");
+        if (runnables == null || runnables.length == 0) {
+            System.out.println("runnables file is empty or null, implying no active wars or processes present.");
             return;
         }
+        runnables = populateWarInfosMap(runnables);
 
-        for (var runnable : listOfRunnables)
-            new PersistentRunnable(runnable.getPath());
+        for (var runnable : runnables)
+            if (runnable != null)
+                new PersistentRunnable(runnable.getPath());
     }
 
 
-    public void populateWarInfosMap() throws IOException {
+    public File[] populateWarInfosMap(File[] runnables) {
 
         File warInfos = new File(plugin.getDataFolder(), "ActiveWars.yml");
 
         if (!warInfos.exists()) {
-            try {
-                warInfos.getParentFile().mkdirs();
-                warInfos.createNewFile();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            warInfos.getParentFile().mkdirs();
         }
 
         YamlConfiguration wc = YamlConfiguration.loadConfiguration(warInfos);
         for (var key : wc.getKeys(false)) {
 
             Town attackedTown = TownyAPI.getInstance().getTown(UUID.fromString(key));
-            Nation attackingNation = TownyAPI.getInstance().getNation((String) wc.get(key + ".attackingNation"));
-            Nation defendingNation = TownyAPI.getInstance().getNation((String) wc.get(key + ".defendingNation"));
-            Resident initialMayor = TownyAPI.getInstance().getResident(UUID.fromString((String) wc.get(key + ".initialMayor")));
-            WarInfo.FlagState flagState = WarInfo.FlagState.valueOf((String) wc.get(key + ".flagState"));
-            Collection<ChunkCoordPair> chunkCoordPairs = ChunkCoordPair.getListOfChunkCoords(",", ";", (String) wc.get(key + ".townBlocks"));
+            Nation attackingNation = TownyAPI.getInstance().getNation(wc.getString(key + ".attackingNation"));
+            Nation defendingNation = TownyAPI.getInstance().getNation(wc.getString(key + ".defendingNation"));
+            Resident initialMayor = TownyAPI.getInstance().getResident(UUID.fromString(wc.getString(key + ".initialMayor")));
+            WarInfo.FlagState flagState = WarInfo.FlagState.valueOf(wc.getString(key + ".flagState"));
+            Collection<ChunkCoordPair> chunkCoordPairs = ChunkCoordPair.getListOfChunkCoords(",", ";", wc.getString(key + ".townBlocks"));
+            String currentRunnable = wc.getString(key + ".currentRunnable");
 
-            WarInfo warInfo;
-            if (isEndWarRunnableRequired(flagState))
-            {
-                new PersistentRunnable((String) wc.get(key + ".pathOfEndWarRunnable"));
-                warInfo = new WarInfo(attackedTown, attackingNation, defendingNation, initialMayor, flagState, new PersistentRunnable((String) wc.get(key + ".pathOfEndWarRunnable")), chunkCoordPairs);
-            }
-            else
-            {
-                Files.deleteIfExists(Path.of((String) wc.get(key + ".pathOfEndWarRunnable")));
-                warInfo = new WarInfo(attackedTown, attackingNation, defendingNation, initialMayor, flagState, null, false);
-            }
-            putIntoWarInfosMap(attackedTown.getUUID(), warInfo);
+            putIntoWarInfosMap(attackedTown.getUUID(), new WarInfo(attackedTown, attackingNation, defendingNation, initialMayor, flagState,
+                new PersistentRunnable(currentRunnable),
+                chunkCoordPairs));
+
+            for (int i = 0; i < runnables.length; i++)
+                if (runnables[i].getPath().equalsIgnoreCase(currentRunnable))
+                    runnables[i] = null;
         }
+        return runnables;
     }
 
     public void startWar(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, WarInfo.FlagState flagState, boolean writeToYML)
     {
         CopyChunk copyChunk = new CopyChunk();
-        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.flagStateTown, FlagWarConfig.getSecondsOfPreFlag()*20L, attackedTown.getWorld().getUID(), new String[] {attackedTown.getName()});
-        PersistentRunnable runnable = new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.endWarDueToTimeUp, (FlagWarConfig.getSecondsOfFlag()*20L+FlagWarConfig.getSecondsOfPreFlag()*20L), attackedTown.getWorld().getUID(), new String[] {attackedTown.getName()});
-        copyChunk.copyChunks(attackedTown.getWorld(), attackedTown);
-        WarInfo warInfo = new WarInfo(attackedTown, attackingNation, defendingNation, initialMayor, flagState, runnable, writeToYML);
+        copyChunk.initiateCopy(attackedTown.getWorld(), attackedTown.getTownBlocks());
+        WarInfo warInfo = new WarInfo(attackedTown, attackingNation, defendingNation, initialMayor, flagState, new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.flagStateTown, FlagWarConfig.getSecondsOfPreFlag()*20L, attackedTown.getWorld().getUID(), new String[] {attackedTown.getName()}), writeToYML);
+
         putIntoWarInfosMap(attackedTown.getUUID(), warInfo);
+
         Bukkit.getServer().getPluginManager().callEvent(new WarStartEvent(attackedTown, attackingNation, defendingNation));
     }
 
@@ -155,11 +146,6 @@ public class WarManager {
             }
         }
         return null;
-    }
-
-    public boolean isEndWarRunnableRequired(WarInfo.FlagState flagState)
-    {
-        return flagState == WarInfo.FlagState.preFlag || flagState == WarInfo.FlagState.flag;
     }
 
     public static void beginEndFlag(CellUnderAttack cell) {
@@ -206,7 +192,7 @@ public class WarManager {
         for (var flag : warInfo.getCurrentFlags())
             try{FlagWar.attackCanceled(flag.getAttackData());} catch (NullPointerException npe) {npe.printStackTrace();}
 
-        warInfo.getEndWarRunnable().cancel();
+        warInfo.getCurrentRunnable().cancel();
         transferOwnershipBack(warInfo.getAttackedTown(), ChunkCoordPair.getTownBlocks(warInfo.getStorableTownBlocks(), warInfo.getAttackedTown().getWorld()));
     }
 
@@ -227,28 +213,34 @@ public class WarManager {
 
     public void loseDefense(WarInfo warInfo) {
 
-        Bukkit.getServer().getPluginManager().callEvent(new WarEndEvent(warInfo.getAttackedTown(), warInfo.getAttackingNation(), warInfo.getDefendingNation(), WarEndEvent.WarEndReason.homeBlockCellWon));
         endWar(warInfo);
 
         TownRuinUtil.putTownIntoRuinedState(warInfo.getAttackedTown());
         warInfo.setCurrentFlagState(WarInfo.FlagState.ruined);
-        warInfo.getEndWarRunnable().cancel();
-        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.getTownOutOfRuinedState, FlagWarConfig.getSecondsOfRuined()*20L, warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
-        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.unWarStateTown, FlagWarConfig.getSecondsOfInvincibility(), warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
+        warInfo.setCurrentRunnable(new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.getTownOutOfRuinedState, FlagWarConfig.getSecondsOfRuined()*20L, warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()}));
+
+        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.unWarStateTown, FlagWarConfig.getSecondsOfInvincibility()*20L, warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
+
+        Bukkit.getServer().getPluginManager().callEvent(new WarEndEvent(warInfo.getAttackedTown(), warInfo.getAttackingNation(), warInfo.getDefendingNation(), WarEndEvent.WarEndReason.homeBlockCellWon));
     }
 
     public void winDefense(WarInfo warInfo) {
-        Bukkit.getServer().getPluginManager().callEvent(new WarEndEvent(warInfo.getAttackedTown(), warInfo.getAttackingNation(), warInfo.getDefendingNation(), WarEndEvent.WarEndReason.timerRanOut));
+
         endWar(warInfo);
         warInfo.setCurrentFlagState(WarInfo.FlagState.defended);
-        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.unWarStateTown, FlagWarConfig.getSecondsOfInvincibility(), warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
+        warInfo.setCurrentRunnable(null);
+        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.unWarStateTown, FlagWarConfig.getSecondsOfInvincibility()*20L, warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
+        Bukkit.getServer().getPluginManager().callEvent(new WarEndEvent(warInfo.getAttackedTown(), warInfo.getAttackingNation(), warInfo.getDefendingNation(), WarEndEvent.WarEndReason.timerRanOut));
     }
 
     public void makeEligibleToFlag(WarInfo warInfo)
     {
-        getWarInfoOrNull(warInfo.getAttackedTown()).setCurrentFlagState(WarInfo.FlagState.flag);
-        EligibleToFlagEvent eligibleToFlagEvent = new EligibleToFlagEvent(warInfo.getAttackedTown(), warInfo.getAttackingNation(), warInfo.getDefendingNation());
-        Bukkit.getServer().getPluginManager().callEvent(eligibleToFlagEvent);
+        warInfo.getCurrentRunnable().cancel();
+
+        warInfo.setCurrentFlagState(WarInfo.FlagState.flag);
+        warInfo.setCurrentRunnable(new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.endWarDueToTimeUp, FlagWarConfig.getSecondsOfFlag()*20L, warInfo.getAttackedTown().getWorld().getUID(), new String[] {warInfo.getAttackedTown().getName()}));
+
+        Bukkit.getServer().getPluginManager().callEvent(new EligibleToFlagEvent(warInfo.getAttackedTown(), warInfo.getAttackingNation(), warInfo.getDefendingNation()));
     }
 
     public void fullyEndWar(WarInfo warInfo)

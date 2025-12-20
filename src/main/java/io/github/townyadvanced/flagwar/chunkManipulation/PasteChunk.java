@@ -1,11 +1,9 @@
 package io.github.townyadvanced.flagwar.chunkManipulation;
 
+import com.palmergames.bukkit.towny.TownyAPI;
 import io.github.townyadvanced.flagwar.config.FlagWarConfig;
 import io.github.townyadvanced.flagwar.objects.ChunkCoordPair;
-import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
-import org.bukkit.Material;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Item;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -26,13 +24,14 @@ public class PasteChunk {
     Stack<ChunkCoordPair> globalCCPs = new Stack<>();
     int batchesLeft;
     int sizeOfBatch;
+    String townName;
 
     public void initiatePaste(Collection<ChunkCoordPair> CCPs, int sizeOfBatch, World world) {
 
         initialChunksToPaste = CCPs.size();
-
         for (var ccp : CCPs)
             globalCCPs.push(ccp);
+        townName = TownyAPI.getInstance().getTownName(new Location(world, globalCCPs.peek().getX()*16, 0, globalCCPs.peek().getZ()*16));
 
         this.sizeOfBatch = sizeOfBatch;
         // there can always be one batch of 0.
@@ -45,6 +44,7 @@ public class PasteChunk {
     {
         if (batchesLeft == 0)
         {
+            Bukkit.getServer().broadcastMessage(ChatColor.BLUE + "[" + ChatColor.YELLOW + "FLAGWAR" + ChatColor.BLUE + "] " + ChatColor.WHITE + townName + " has been restored!");
             System.out.println("Successfully pasted and deleted " + initialChunksToPaste + " chunk(s)!");
             return;
         }
@@ -54,10 +54,7 @@ public class PasteChunk {
         int trueSizeOfBatch = Math.min(sizeOfBatch, globalCCPs.size());
 
         for (int i = 0; i < trueSizeOfBatch; i++)
-        {
-            ChunkCoordPair ccp = globalCCPs.pop();
-            CCPSection.push(ccp);
-        }
+            CCPSection.push(globalCCPs.pop());
 
         readChunks(world, CCPSection);
     }

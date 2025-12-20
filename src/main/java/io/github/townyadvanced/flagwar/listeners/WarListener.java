@@ -169,6 +169,6 @@ public class WarListener implements Listener {
     @EventHandler
     public void onEligibleToFlag(EligibleToFlagEvent e)
     {
-        server.broadcastMessage(e.getAttackedTown().getName() + "'s flag state is now ON. You may now flag!");
+        server.broadcastMessage(ChatColor.BLUE + "[" + ChatColor.YELLOW + "FLAGWAR" + ChatColor.BLUE + "] " + ChatColor.WHITE + e.getAttackedTown().getName() + "'s flag state is now ON. You may now flag!");
     }
 }

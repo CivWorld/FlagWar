@@ -1,6 +1,7 @@
 package io.github.townyadvanced.flagwar.chunkManipulation;
 
 import com.palmergames.bukkit.towny.object.Town;
+import com.palmergames.bukkit.towny.object.TownBlock;
 import org.bukkit.*;
 import org.bukkit.block.data.*;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -8,16 +9,17 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Collection;
 
 public class CopyChunk {
     JavaPlugin plugin = JavaPlugin.getProvidingPlugin(this.getClass());
 
 
-    public void copyChunks(World world, Town town) {
+    public void initiateCopy(World world, Collection<TownBlock> townBlocks) {
 
         ArrayList<ChunkSnapshot> snapshots = new ArrayList<>();
 
-        for (var tb : town.getTownBlocks()) {
+        for (var tb : townBlocks) {
             snapshots.add(world.getChunkAt(tb.getX(), tb.getZ()).getChunkSnapshot());
         }
 

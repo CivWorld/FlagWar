@@ -77,26 +77,26 @@ public class FlagWarBlockListener implements Listener {
     @EventHandler
     public void onPotentialBannerPlace(TownyBuildEvent e) throws NotRegisteredException {
         if (e.getTownBlock() == null) return;
-        Town victimTown = e.getTownBlock().getTown();
+        Town attackedTown = e.getTownBlock().getTown();
         Resident enemy = TownyAPI.getInstance().getResident(e.getPlayer());
 
-        Collection<Resident> onlineResidentsList = victimTown.getResidents();
+        Collection<Resident> onlineResidentsList = attackedTown.getResidents().stream().filter(Resident::isOnline).toList();
 
         if (    e.isInWilderness()
             || !e.getTownBlock().getWorld().isWarAllowed()
             || !e.getTownBlock().getTownOrNull().isAllowedToWar()
             || !FlagWarConfig.isAllowingAttacks()
             || !Tag.BANNERS.isTagged(e.getBlock().getType())
-            || !(enemy.getTownOrNull().getNationOrNull().getEnemies().contains(victimTown.getNationOrNull()))
-            || warManager.hasActiveWar(victimTown)
-            || victimTown.hasActiveWar()
+            || !(enemy.getTownOrNull().getNationOrNull().getEnemies().contains(attackedTown.getNationOrNull()))
+            || warManager.hasActiveWar(attackedTown)
+            || attackedTown.hasActiveWar()
             || FlagWarConfig.getMinPlayersOnlineInTownForWar() > onlineResidentsList.size())
         {
             return;
         }
 
         e.setCancelled(false);
-        warManager.startWar(victimTown, enemy.getNationOrNull(), victimTown.getNationOrNull(), victimTown.getMayor(), WarInfo.FlagState.preFlag, true);
+        warManager.startWar(attackedTown, enemy.getNationOrNull(), attackedTown.getNationOrNull(), attackedTown.getMayor(), WarInfo.FlagState.preFlag, true);
     }
 
 

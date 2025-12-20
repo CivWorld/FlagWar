@@ -19,6 +19,7 @@ package io.github.townyadvanced.flagwar.command;
 import com.palmergames.bukkit.towny.TownyAPI;
 import io.github.townyadvanced.flagwar.FlagWar;
 import io.github.townyadvanced.flagwar.WarManager;
+import io.github.townyadvanced.flagwar.objects.PersistentRunnable;
 import io.github.townyadvanced.flagwar.objects.WarInfo;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -40,18 +41,20 @@ public class ComPhaseAdvance implements CommandExecutor
             p.sendMessage(ChatColor.RED + "You do not have permission to execute this command.");
             return true;
         }
+
         WarInfo warInfo = warManager.getWarInfoOrNull(TownyAPI.getInstance().getTown(strings[0]));
 
         if (warInfo == null) {
-            System.out.println(ChatColor.RED + "ERROR: " + strings[0] + " is not in a war or does not exist!");
+            System.out.println("ERROR: " + strings[0] + " is not in a war or does not exist!");
             return true;
         }
 
+        PersistentRunnable currentRunnable = warInfo.getCurrentRunnable();
         switch (warInfo.getCurrentFlagState())
         {
-            case preFlag: warManager.makeEligibleToFlag(warInfo); break;
-            case flag: warManager.winDefense(warInfo); break;
-            case ruined, defended: warManager.fullyEndWar(warInfo); break;
+            case preFlag: if (currentRunnable != null) currentRunnable.cancel(); warManager.makeEligibleToFlag(warInfo); break;
+            case flag: if (currentRunnable != null) currentRunnable.cancel(); warManager.winDefense(warInfo); break;
+            case ruined, defended: if (currentRunnable != null) currentRunnable.cancel(); warManager.fullyEndWar(warInfo); break;
         }
         return true;
     }

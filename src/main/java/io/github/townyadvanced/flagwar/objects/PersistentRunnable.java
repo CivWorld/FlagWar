@@ -20,11 +20,7 @@ import com.palmergames.bukkit.towny.object.Town;
 import com.palmergames.bukkit.towny.utils.TownRuinUtil;
 import io.github.townyadvanced.flagwar.FlagWar;
 import io.github.townyadvanced.flagwar.WarManager;
-import io.github.townyadvanced.flagwar.events.EligibleToFlagEvent;
-import io.github.townyadvanced.flagwar.events.WarEndEvent;
-import io.github.townyadvanced.flagwar.listeners.WarListener;
 import org.bukkit.Bukkit;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -82,8 +78,15 @@ public class PersistentRunnable {
 
     public PersistentRunnable(String path) {
 
+        if (path == null)
+            return;
         this.path = path;
         File runnableFile = new File(path);
+        if (!runnableFile.exists())
+        {
+            System.out.println("The file with path " + path + " does not exist!");
+            return;
+        }
         try (BufferedReader r = new BufferedReader(new FileReader(runnableFile))) {
             this.executionTime = Long.parseLong(r.readLine());
             this.action = PersistentRunnableAction.valueOf(r.readLine());
@@ -133,7 +136,7 @@ public class PersistentRunnable {
                     default:
                         System.out.println("Error. There is no such action as " + action + "!");
                 }
-                this.cancel();
+                PersistentRunnable.this.cancel();
             }
         }.runTaskLater(plugin, duration).getTaskId();
     }
@@ -147,7 +150,6 @@ public class PersistentRunnable {
             return;
 
         Town attackedTown = warInfo.getAttackedTown();
-        System.out.println(warInfo.getInitialMayor());
         TownRuinUtil.reclaimTown(warInfo.getInitialMayor(), attackedTown);
     }
 
@@ -178,7 +180,6 @@ public class PersistentRunnable {
 
         if (warInfo == null || warInfo.getCurrentFlagState() != WarInfo.FlagState.flag)
             return;
-
 
         warManager.winDefense(warInfo);
     }

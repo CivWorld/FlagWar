@@ -283,12 +283,14 @@ public class CellUnderAttack extends Cell {
         flagLightBlock.setType(Material.AIR);
         flagTimerBlock.setType(Material.AIR);
         flagBaseBlock.setType(Material.AIR);
-        for (Block block : beaconFlagBlocks) {
-            block.setType(Material.AIR);
-        }
-        for (Block block : beaconWireframeBlocks) {
-            block.setType(Material.AIR);
-        }
+
+        if (beaconFlagBlocks != null)
+            for (Block block : beaconFlagBlocks)
+                block.setType(Material.AIR);
+
+        if (beaconWireframeBlocks != null)
+            for (Block block : beaconWireframeBlocks)
+                block.setType(Material.AIR);
     }
 
     /**
