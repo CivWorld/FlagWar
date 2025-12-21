@@ -205,6 +205,9 @@ battle_timings:
     # How long a banner becomes invincible after losing a life.
     seconds_after_attack_defending: 1
 
+    # How long a remark, such as that of destroying a forcefield, lasts as a holographic display above the flag.
+    seconds_hologram_remark_time: 3
+
 chunk_manipulation:
     # Unless you absolutely know what you're doing, it is recommended to keep these values as they are.
 

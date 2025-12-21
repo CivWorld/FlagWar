@@ -45,6 +45,10 @@ public class FlagInfo
         this.townBlock = currentTownBlock;
         this.flagBlock = flagBlock;
         this.attackData = attackData;
+        new BukkitRunnable()
+        {
+            public void run() {setLivesFrozen(true);}
+        }.runTaskLater(JavaPlugin.getProvidingPlugin(this.getClass()), FlagWarConfig.getSecondsUntilLockedFlagLives()*20L);
     }
     public Resident getFlagPlacer() {return flagPlacer;}
     public int getPotentialExtraLives() {return potentialExtraLives;}
@@ -58,11 +62,13 @@ public class FlagInfo
     public void setAttackData(CellUnderAttack attackData) {this.attackData = attackData;}
     public CellUnderAttack getAttackData() {return attackData;}
     public int getExtraTicks() {return extraTicks;}
+
     public void addExtraTicks(int extraTicks)
     {
         setExtraTicks(getExtraTicks()+extraTicks);
         setSecondsLeft((getSecondsLeft()+extraTicks/20));
     }
+
     public void setExtraTicks(int extraTicks) {this.extraTicks = extraTicks;}
     public long getSecondsLeft() {return secondsLeft;}
     public void setSecondsLeft(long secondsLeft) {this.secondsLeft = secondsLeft;}

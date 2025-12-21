@@ -32,6 +32,7 @@ import io.github.townyadvanced.flagwar.events.WarEndEvent;
 import io.github.townyadvanced.flagwar.events.WarStartEvent;
 import io.github.townyadvanced.flagwar.objects.*;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -171,6 +172,7 @@ public class WarManager {
 
         flag.setActualExtraLives(flag.getActualExtraLives() - 1);
         hologramManager.updateFlagLives(flag);
+        hologramManager.makeRemark(ChatColor.DARK_RED, "LIFE DESTROYED!", flag);
         return flag.getActualExtraLives() < 0;
     }
 
@@ -302,6 +304,7 @@ public class WarManager {
         currentFlag.setActualExtraLives(currentFlag.getActualExtraLives()+1);
         currentFlag.addExtraTicks(extraTimeTicks);
 
+        hologramManager.makeRemark(ChatColor.GREEN, "LIFE ADDED!", currentFlag);
         hologramManager.updateFlagLives(currentFlag);
     }
 

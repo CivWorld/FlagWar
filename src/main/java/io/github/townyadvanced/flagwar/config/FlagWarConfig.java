@@ -645,6 +645,11 @@ public final class FlagWarConfig {
         return PLUGIN.getConfig().getInt(("battle_timings.seconds_after_attack_defending"));
     }
 
+    public static int getHologramRemarkTime()
+    {
+        return PLUGIN.getConfig().getInt("battle_timings.seconds_hologram_remark_time");
+    }
+
     public static int getChunkPasteBatchSize()
     {
         return PLUGIN.getConfig().getInt(("chunk_manipulation.chunk_paste_batch_size"));

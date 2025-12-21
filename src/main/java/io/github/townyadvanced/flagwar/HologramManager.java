@@ -16,9 +16,11 @@
 
 package io.github.townyadvanced.flagwar;
 
+import com.mojang.brigadier.Message;
 import com.palmergames.bukkit.towny.object.Resident;
 import eu.decentsoftware.holograms.api.DHAPI;
 import eu.decentsoftware.holograms.api.holograms.Hologram;
+import io.github.townyadvanced.flagwar.config.FlagWarConfig;
 import io.github.townyadvanced.flagwar.objects.FlagInfo;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -38,8 +40,8 @@ public class HologramManager {
 
 
     void createHologramOfFlag(FlagInfo currentFlag) {
-        Location hologramLocation = currentFlag.getFlagBlock().getLocation().toVector().add(new Vector(0.5, 2.5, 0.5)).toLocation(currentFlag.getTownBlock().getTownOrNull().getWorld());
-        Hologram h = DHAPI.createHologram(currentFlag.getFlagPlacer().getUUID().toString(), hologramLocation, List.of(" ", " "));
+        Location hologramLocation = currentFlag.getFlagBlock().getLocation().toVector().add(new Vector(0.5, 2.8, 0.5)).toLocation(currentFlag.getTownBlock().getTownOrNull().getWorld());
+        Hologram h = DHAPI.createHologram(currentFlag.getFlagPlacer().getUUID().toString(), hologramLocation, List.of("", "", ""));
 
         String message = ChatColor.YELLOW + "Lives: " + ChatColor.WHITE + (currentFlag.getActualExtraLives() + 1);
 
@@ -94,5 +96,19 @@ public class HologramManager {
 
         Hologram h = holograms.get(currentFlag.getFlagPlacer().getUUID());
         DHAPI.setHologramLine(h, 0, ""+ color + currentFlag.getSecondsLeft() + ChatColor.YELLOW + " seconds left!");
+    }
+
+    public void makeRemark(ChatColor color, String remark, FlagInfo currentFlag)
+    {
+        Hologram h = holograms.get(currentFlag.getFlagPlacer().getUUID());
+        DHAPI.setHologramLine(h, 2, (color + "" + ChatColor.BOLD + remark));
+
+        new BukkitRunnable()
+        {
+            public void run()
+            {
+                DHAPI.setHologramLine(h, 2, "");
+            }
+        }.runTaskLater(plugin, FlagWarConfig.getHologramRemarkTime()*20L);
     }
 }
