@@ -16,8 +16,6 @@
 
 package io.github.townyadvanced.flagwar.objects;
 
-import com.palmergames.bukkit.towny.object.Town;
-import com.palmergames.bukkit.towny.utils.TownRuinUtil;
 import io.github.townyadvanced.flagwar.FlagWar;
 import io.github.townyadvanced.flagwar.WarManager;
 import org.bukkit.Bukkit;
@@ -146,18 +144,18 @@ public class PersistentRunnable {
         WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
         WarInfo warInfo = warManager.getWarInfoOrNull(townName);
 
-        if (warInfo == null || warInfo.getCurrentFlagState() != WarInfo.FlagState.ruined)
+        if (warInfo == null || warInfo.getCurrentFlagState() != FlagState.ruined)
             return;
 
-        Town attackedTown = warInfo.getAttackedTown();
-        TownRuinUtil.reclaimTown(warInfo.getInitialMayor(), attackedTown);
+        warManager.getTownOutOfRuinedState(warInfo);
     }
+
 
     void unWarStateTown(String townName) {
         WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
         WarInfo warInfo = warManager.getWarInfoOrNull(townName);
 
-        if (warInfo == null || warInfo.getCurrentFlagState() != WarInfo.FlagState.defended || warInfo.getCurrentFlagState() != WarInfo.FlagState.ruined)
+        if (warInfo == null || (warInfo.getCurrentFlagState() != FlagState.extinct && warInfo.getCurrentFlagState() != FlagState.ruined))
             return;
 
         warManager.fullyEndWar(warInfo);
@@ -167,7 +165,7 @@ public class PersistentRunnable {
         WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
         WarInfo warInfo = warManager.getWarInfoOrNull(townName);
 
-        if (warInfo == null || warInfo.getCurrentFlagState() != WarInfo.FlagState.preFlag)
+        if (warInfo == null || warInfo.getCurrentFlagState() != FlagState.preFlag)
             return;
 
         warManager.makeEligibleToFlag(warInfo);
@@ -178,7 +176,7 @@ public class PersistentRunnable {
         WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
         WarInfo warInfo = warManager.getWarInfoOrNull(townName);
 
-        if (warInfo == null || warInfo.getCurrentFlagState() != WarInfo.FlagState.flag)
+        if (warInfo == null || warInfo.getCurrentFlagState() != FlagState.flag)
             return;
 
         warManager.winDefense(warInfo);

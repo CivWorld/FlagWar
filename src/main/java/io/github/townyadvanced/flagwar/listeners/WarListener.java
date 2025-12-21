@@ -78,7 +78,8 @@ public class WarListener implements Listener {
         TownBlock tb = TownyAPI.getInstance().getTownBlock(e.getCellUnderAttack().getFlagBaseBlock().getLocation());
         String flagPlacer = e.getCellUnderAttack().getNameOfFlagOwner();
         WarInfo warInfo = warManager.getWarInfoOrNull(tb.getTownOrNull());
-        warManager.removeFlagFromWar(warInfo, flagPlacer);
+
+        if (warInfo != null) warManager.removeFlagFromWar(warInfo, flagPlacer);
     }
 
     @EventHandler
@@ -86,15 +87,14 @@ public class WarListener implements Listener {
     {
         WarInfo warInfo = warManager.getWarInfoOrNull(TownyAPI.getInstance().getTownBlock(e.getCell().getAttackData().getFlagBaseBlock().getLocation()).getTownOrNull());
         String flagPlacer = e.getCell().getAttackData().getNameOfFlagOwner();
-
-        if (warInfo != null) warManager.removeFlagFromWar(warInfo, flagPlacer);
+        warManager.removeFlagFromWar(warInfo, flagPlacer);
     }
+
 
     // this is the ugliest function in the entire codebase
     // i really think i'll just keep it like that if it works.
-
     @EventHandler
-    public void onPotentialFlagLiveIncrease(PlayerInteractEvent e)
+    public void onPotentialFlagLifeIncrease(PlayerInteractEvent e)
     {
         if (e.getAction().isRightClick() && e.getHand() == EquipmentSlot.HAND && e.getClickedBlock() != null)
         {
@@ -132,13 +132,13 @@ public class WarListener implements Listener {
 
                         warManager.addExtraFlagLife(currentFlag, extraTimeTicks);
 
-                        long delay = FlagWarConfig.getSecondsUntilLockedFlagLives()* 20L;
+                        long delay = FlagWarConfig.getSecondsUntilLockedFlagLives() * 20L;
                         System.out.println(delay);
                         new BukkitRunnable() {@Override public void run() {currentFlag.setLivesFrozen(true);}}.runTaskLater(JavaPlugin.getProvidingPlugin(this.getClass()), delay);
 
                     }
 
-                    else if (currentFlag.getPotentialExtraLives() == 2 && itemHeld.getAmount() >= FlagWarConfig.getPriceToIncreaseFlagLives(2) && !currentFlag.isLivesFrozen())
+                    else if (currentFlag.getPotentialExtraLives() == 2 && itemHeld.getAmount() >= FlagWarConfig.getPriceToIncreaseFlagLives(2) && currentFlag.isNotLivesFrozen())
                     {
                         int price = FlagWarConfig.getPriceToIncreaseFlagLives(2);
                         int extraTimeTicks = FlagWarConfig.getExtraTimeSecondsPerFlagLife()*20;
@@ -150,7 +150,7 @@ public class WarListener implements Listener {
                         warManager.addExtraFlagLife(currentFlag, extraTimeTicks);
                     }
 
-                    else if (currentFlag.getPotentialExtraLives() == 1 && itemHeld.getAmount() >= FlagWarConfig.getPriceToIncreaseFlagLives(3) && !currentFlag.isLivesFrozen())
+                    else if (currentFlag.getPotentialExtraLives() == 1 && itemHeld.getAmount() >= FlagWarConfig.getPriceToIncreaseFlagLives(3) && currentFlag.isNotLivesFrozen())
                     {
                         int price = FlagWarConfig.getPriceToIncreaseFlagLives(3);
                         int extraTimeTicks = FlagWarConfig.getExtraTimeSecondsPerFlagLife()*20;

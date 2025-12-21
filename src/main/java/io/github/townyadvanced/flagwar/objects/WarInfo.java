@@ -3,6 +3,7 @@ package io.github.townyadvanced.flagwar.objects;
 import com.palmergames.bukkit.towny.object.Nation;
 import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
+import io.github.townyadvanced.flagwar.events.WarEndEvent;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -12,16 +13,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 public class WarInfo {
-
-
-    public enum FlagState
-    {
-        preFlag,
-        flag,
-        ruined,
-        defended,
-    }
-
     private final Town attackedTown;
     private final Nation attackingNation;
     private final Nation defendingNation;
@@ -30,6 +21,7 @@ public class WarInfo {
     private FlagState currentFlagState;
     private PersistentRunnable currentRunnable;
     private final Collection<ChunkCoordPair> storableTownBlocks;
+    private WarEndEvent.WarEndReason warEndReason; // if null, the war hasn't ended yet.
 
     public WarInfo(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, FlagState flagState, PersistentRunnable currentRunnable, Collection<ChunkCoordPair> chunkCoordPairs)
     {
@@ -68,8 +60,6 @@ public class WarInfo {
                 warInfoConfig.set(key + ".currentRunnable", currentRunnable.getPathAsString());
                 warInfoConfig.set(key + ".townBlocks", ChunkCoordPair.getStringCoordsOfCollection(",", ";", storableTownBlocks));
 
-
-
                 warInfoConfig.save(warInfoFile);
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -84,6 +74,9 @@ public class WarInfo {
     public ArrayList<FlagInfo> getCurrentFlags() {return activeFlags;}
     public FlagState getCurrentFlagState() {return currentFlagState;}
     public PersistentRunnable getCurrentRunnable() {return this.currentRunnable;}
+    public void setWarEndReason(WarEndEvent.WarEndReason warEndReason) {this.warEndReason = warEndReason;}
+    public WarEndEvent.WarEndReason getWarEndReason() {return warEndReason;}
+
     public void setCurrentRunnable(PersistentRunnable currentRunnable)
     {
         this.currentRunnable = currentRunnable;

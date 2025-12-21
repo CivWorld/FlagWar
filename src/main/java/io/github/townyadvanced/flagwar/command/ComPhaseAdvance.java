@@ -19,6 +19,7 @@ package io.github.townyadvanced.flagwar.command;
 import com.palmergames.bukkit.towny.TownyAPI;
 import io.github.townyadvanced.flagwar.FlagWar;
 import io.github.townyadvanced.flagwar.WarManager;
+import io.github.townyadvanced.flagwar.objects.FlagState;
 import io.github.townyadvanced.flagwar.objects.PersistentRunnable;
 import io.github.townyadvanced.flagwar.objects.WarInfo;
 import org.bukkit.ChatColor;
@@ -54,7 +55,8 @@ public class ComPhaseAdvance implements CommandExecutor
         {
             case preFlag: if (currentRunnable != null) currentRunnable.cancel(); warManager.makeEligibleToFlag(warInfo); break;
             case flag: if (currentRunnable != null) currentRunnable.cancel(); warManager.winDefense(warInfo); break;
-            case ruined, defended: if (currentRunnable != null) currentRunnable.cancel(); warManager.fullyEndWar(warInfo); break;
+            case ruined: if (currentRunnable != null) currentRunnable.cancel(); warManager.getTownOutOfRuinedState(warInfo); warInfo.setCurrentFlagState(FlagState.extinct); break;
+            case extinct: if (currentRunnable != null) currentRunnable.cancel(); warManager.fullyEndWar(warInfo); break;
         }
         return true;
     }

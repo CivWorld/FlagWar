@@ -25,6 +25,7 @@ import com.palmergames.bukkit.towny.object.Town;
 import io.github.townyadvanced.flagwar.WarManager;
 import io.github.townyadvanced.flagwar.events.WarEndEvent;
 import io.github.townyadvanced.flagwar.events.WarStartEvent;
+import io.github.townyadvanced.flagwar.objects.FlagState;
 import io.github.townyadvanced.flagwar.objects.PersistentRunnable;
 import io.github.townyadvanced.flagwar.objects.WarInfo;
 import org.bukkit.Bukkit;
@@ -90,13 +91,14 @@ public class FlagWarBlockListener implements Listener {
             || !(enemy.getTownOrNull().getNationOrNull().getEnemies().contains(attackedTown.getNationOrNull()))
             || warManager.hasActiveWar(attackedTown)
             || attackedTown.hasActiveWar()
-            || FlagWarConfig.getMinPlayersOnlineInTownForWar() > onlineResidentsList.size())
+            || FlagWarConfig.getMinPlayersOnlineInTownForWar() > onlineResidentsList.size()
+            || enemy.getTownOrNull().getNationOrNull().isNeutral())
         {
             return;
         }
 
         e.setCancelled(false);
-        warManager.startWar(attackedTown, enemy.getNationOrNull(), attackedTown.getNationOrNull(), attackedTown.getMayor(), WarInfo.FlagState.preFlag, true);
+        warManager.startWar(attackedTown, enemy.getNationOrNull(), attackedTown.getNationOrNull(), attackedTown.getMayor(), FlagState.preFlag, true);
     }
 
 
@@ -110,16 +112,24 @@ public class FlagWarBlockListener implements Listener {
     @EventHandler (priority = EventPriority.HIGH)
     @SuppressWarnings("unused")
     public void onFlagWarFlagPlace(final TownyBuildEvent townyBuildEvent) throws NotRegisteredException {
-        if (   townyBuildEvent.getTownBlock() == null
+        if
+        (      warManager.cannotFlagRightNow(townyBuildEvent.getTownBlock())
+            || warManager.cannotFlagRightNow(TownyAPI.getInstance().getResident(townyBuildEvent.getPlayer())))
+        {
+            townyBuildEvent.setCancelled(true);
+            return;
+        }
+
+            if (   townyBuildEvent.getTownBlock() == null
             || !townyBuildEvent.getTownBlock().getWorld().isWarAllowed()
             || !townyBuildEvent.getTownBlock().getTownOrNull().isAllowedToWar()
             || !FlagWarConfig.isAllowingAttacks()
             || !Tag.FENCES.isTagged(townyBuildEvent.getMaterial())
             || !warManager.hasActiveWar(townyBuildEvent.getTownBlock().getTownOrNull())
             || !warManager.isEligibleToFlag(townyBuildEvent.getTownBlock().getTownOrNull()))
-        {
-            return;
-        }
+            {
+                return;
+            }
 
         var player = townyBuildEvent.getPlayer();
         var block = player.getWorld().getBlockAt(townyBuildEvent.getLocation());

@@ -42,6 +42,7 @@ import io.github.townyadvanced.flagwar.config.FlagWarConfig;
 import io.github.townyadvanced.flagwar.events.CellAttackCanceledEvent;
 import io.github.townyadvanced.flagwar.events.CellAttackEvent;
 import io.github.townyadvanced.flagwar.events.CellDefendedEvent;
+import io.github.townyadvanced.flagwar.events.CellWonEvent;
 import io.github.townyadvanced.flagwar.i18n.LocaleUtil;
 import io.github.townyadvanced.flagwar.i18n.Translate;
 import io.github.townyadvanced.flagwar.listeners.*;
@@ -69,6 +70,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitScheduler;
 
 /**
  * The main class of the TownyAdvanced: FlagWar addon. Houses core functionality.
@@ -118,6 +120,9 @@ public class FlagWar extends JavaPlugin {
     private WarListener warListener;
     /** Holds instance of the {@link WarManager}. */
     private static WarManager warManager;
+    /** Holds instance of the {@link WarManager}. */
+    private static HologramManager hologramManager;
+
 
     /**
      * Initializes the Scheduler object based on whether we're using Folia/Paper or Spigot/Bukkit.
@@ -144,8 +149,8 @@ public class FlagWar extends JavaPlugin {
 
         /* warManager initialization MUST be before initializeListeners()
         or it will initialize the listeners with a null warManager. */
-
-        warManager = new WarManager();
+        hologramManager = new HologramManager();
+        warManager = new WarManager(getHologramManager());
         initializeListeners();
 
         getCommand("PhaseAdvance").setExecutor(new ComPhaseAdvance());
@@ -156,6 +161,9 @@ public class FlagWar extends JavaPlugin {
 
         new TownyAdminReloadAddon();
 
+    }
+    public HologramManager getHologramManager() {
+        return hologramManager;
     }
 
     public WarManager getWarManager() {
@@ -416,30 +424,53 @@ public class FlagWar extends JavaPlugin {
     }
 
     static void attackWon(final CellUnderAttack cell) {
-        WarManager.beginEndFlag(cell);
+        FlagInfo currentFlag = warManager.getFlagInfoOrNull(cell);
+
+        if (currentFlag == null) return;
+        cell.setUnderExtraTime(true);
+
+        if (currentFlag.getExtraTicks() != 0)
+            Bukkit.getServer().broadcastMessage("Extra time of " + (currentFlag.getExtraTicks() / 20) + " seconds begins now!");
+
+        new BukkitRunnable() // no need for this to be persistent, as the flag gets lost upon restart anyway.
+        {
+            public void run() {
+                if (cell.isUnderExtraTime())
+                {
+                    cell.setUnderExtraTime(false);
+                    Bukkit.getServer().getPluginManager().callEvent(new CellWonEvent(cell));
+                    cell.cancel();
+                    FlagWar.removeCellUnderAttack(cell);
+                }
+            }
+        }.runTaskLater(plugin, currentFlag.getExtraTicks());
     }
 
     static void attackDefended(final Player player, final CellUnderAttack cell) {
 
-        FlagInfo currentFlag = WarManager.getFlagInfoOrNull(cell);
-        if (!WarManager.decrementAndCheckifDead(currentFlag))
+        FlagInfo currentFlag = warManager.getFlagInfoOrNull(cell);
+        if (!WarManager.decrementAndCheckIfDead(currentFlag))
         {
             player.sendMessage("Forcefield destroyed! There are " + (currentFlag.getActualExtraLives()+1) + " lives left!");
+
             currentFlag.getFlagBlock().setType(Material.BEDROCK);
             new BukkitRunnable()
             {
                 @Override
                 public void run() {
-                    currentFlag.getAttackData().updateFlag();             }
+                    currentFlag.getAttackData().updateFlag();
+                }
             }.runTaskLater(plugin, FlagWarConfig.getImmunitySecondsAfterAttackDefending()*20L);
 
             return;
         }
 
+        cell.setUnderExtraTime(false);
         var cellDefendedEvent = new CellDefendedEvent(player, cell);
         PLUGIN_MANAGER.callEvent(cellDefendedEvent);
         cell.cancel();
         removeCellUnderAttack(cell);
+
     }
 
     static void attackCanceled(final CellUnderAttack cell) {

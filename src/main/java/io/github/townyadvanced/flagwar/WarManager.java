@@ -42,12 +42,18 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+
+// WE MIGHT NEED TO SPLIT THIS WARMANAGER INTO A FLAGMANAGER AND A WARMANAGER.
+
+
 public class WarManager {
     static Plugin plugin = FlagWar.getInstance();
     HashMap<UUID, WarInfo> war_infos = new HashMap<>();
+    static HologramManager hologramManager;
 
+    public WarManager(HologramManager hm) {
 
-    public WarManager() {
+        hologramManager = hm;
 
         File runnablesFolder = new File(plugin.getDataFolder(), "runnables");
 
@@ -83,7 +89,7 @@ public class WarManager {
             Nation attackingNation = TownyAPI.getInstance().getNation(wc.getString(key + ".attackingNation"));
             Nation defendingNation = TownyAPI.getInstance().getNation(wc.getString(key + ".defendingNation"));
             Resident initialMayor = TownyAPI.getInstance().getResident(UUID.fromString(wc.getString(key + ".initialMayor")));
-            WarInfo.FlagState flagState = WarInfo.FlagState.valueOf(wc.getString(key + ".flagState"));
+            FlagState flagState = FlagState.valueOf(wc.getString(key + ".flagState"));
             Collection<ChunkCoordPair> chunkCoordPairs = ChunkCoordPair.getListOfChunkCoords(",", ";", wc.getString(key + ".townBlocks"));
             String currentRunnable = wc.getString(key + ".currentRunnable");
 
@@ -98,7 +104,7 @@ public class WarManager {
         return runnables;
     }
 
-    public void startWar(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, WarInfo.FlagState flagState, boolean writeToYML)
+    public void startWar(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, FlagState flagState, boolean writeToYML)
     {
         CopyChunk copyChunk = new CopyChunk();
         copyChunk.initiateCopy(attackedTown.getWorld(), attackedTown.getTownBlocks());
@@ -120,27 +126,36 @@ public class WarManager {
         if (tb == null) return null;
 
         for (var flag : activeFlags) {
-            if (tb.equals(flag.getCurrentTownBlock())) return flag;
+            if (tb.equals(flag.getTownBlock())) return flag;
         }
 
         return null;
     }
 
-    public static FlagInfo getFlagInfoOrNull(CellUnderAttack cellUnderAttack) {
+    public static FlagInfo getFlagInfoOrNull(WarInfo warInfo, String flagPlacer)
+    {
+        for (var flag : warInfo.getCurrentFlags())
+            if (flag.getFlagPlacer().getName().equalsIgnoreCase(flagPlacer))
+                return flag;
 
-        WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
+        return null;
+    }
+
+    public FlagInfo getFlagInfoOrNull(CellUnderAttack cellUnderAttack) {
+
         String flagPlacer = cellUnderAttack.getNameOfFlagOwner();
         Town town = TownyAPI.getInstance().getTown(cellUnderAttack.getFlagBaseBlock().getLocation());
+        WarInfo warInfo = war_infos.get(town.getUUID());
 
-        // you can never be safe with static functions and concurrent modifications, so war_infos will be cloned.
-        HashMap<UUID, WarInfo> war_infosCLONE = (HashMap<UUID, WarInfo>) warManager.getWarInfos().clone();
+        System.out.println(town.getName());
+        System.out.println(war_infos.values());
 
-        if (war_infosCLONE == null || town == null) {
-            System.out.println("Error, hashmap cloning or town getting failed.");
+        if (town == null || warInfo == null) {
+            System.out.println("ERROR: Town is null.");
             return null;
         }
 
-        for (var item : war_infosCLONE.get(town.getUUID()).getCurrentFlags()) {
+        for (var item : warInfo.getCurrentFlags()) {
             if (flagPlacer.equalsIgnoreCase(item.getFlagPlacer().getName())) {
                 return item;
             }
@@ -148,34 +163,14 @@ public class WarManager {
         return null;
     }
 
-    public static void beginEndFlag(CellUnderAttack cell) {
-        FlagInfo currentFlag = getFlagInfoOrNull(cell);
-        if (currentFlag == null) return;
-        cell.setUnderExtraTime(true);
-        if (currentFlag.getExtraTicks() != 0)
-        {
-            Bukkit.getServer().broadcastMessage("Extra time of " + (currentFlag.getExtraTicks() / 20) + " seconds begins now!");
-        }
-
-        new BukkitRunnable() // no need for this to be persistent, as the flag gets lost upon restart anyway.
-        {
-            public void run() {
-                cell.setUnderExtraTime(false);
-                Bukkit.getServer().getPluginManager().callEvent(new CellWonEvent(cell));
-                cell.cancel();
-                FlagWar.removeCellUnderAttack(cell);
-                getFlagInfoOrNull(cell);
-            }
-        }.runTaskLater(plugin, currentFlag.getExtraTicks());
-    }
-
-    public static boolean decrementAndCheckifDead(FlagInfo flag) {
+    public static boolean decrementAndCheckIfDead(FlagInfo flag) {
         if (flag == null) {
             System.out.println("Error. Flag is null!");
             return true;
         }
 
         flag.setActualExtraLives(flag.getActualExtraLives() - 1);
+        hologramManager.updateFlagLives(flag);
         return flag.getActualExtraLives() < 0;
     }
 
@@ -189,11 +184,15 @@ public class WarManager {
 
     public void endWar(WarInfo warInfo)
     {
+        transferOwnershipBack(warInfo.getAttackedTown(), ChunkCoordPair.getTownBlocks(warInfo.getStorableTownBlocks(), warInfo.getAttackedTown().getWorld()));
+
         for (var flag : warInfo.getCurrentFlags())
-            try{FlagWar.attackCanceled(flag.getAttackData());} catch (NullPointerException npe) {npe.printStackTrace();}
+            try{
+                hologramManager.removeHologramOfFlag(flag.getFlagPlacer());
+                FlagWar.attackCanceled(flag.getAttackData());
+            } catch (NullPointerException npe) {npe.printStackTrace();}
 
         warInfo.getCurrentRunnable().cancel();
-        transferOwnershipBack(warInfo.getAttackedTown(), ChunkCoordPair.getTownBlocks(warInfo.getStorableTownBlocks(), warInfo.getAttackedTown().getWorld()));
     }
 
     public WarInfo getWarInfoOrNull(String townName) {
@@ -216,7 +215,7 @@ public class WarManager {
         endWar(warInfo);
 
         TownRuinUtil.putTownIntoRuinedState(warInfo.getAttackedTown());
-        warInfo.setCurrentFlagState(WarInfo.FlagState.ruined);
+        warInfo.setCurrentFlagState(FlagState.ruined);
         warInfo.setCurrentRunnable(new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.getTownOutOfRuinedState, FlagWarConfig.getSecondsOfRuined()*20L, warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()}));
 
         new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.unWarStateTown, FlagWarConfig.getSecondsOfInvincibility()*20L, warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
@@ -227,7 +226,8 @@ public class WarManager {
     public void winDefense(WarInfo warInfo) {
 
         endWar(warInfo);
-        warInfo.setCurrentFlagState(WarInfo.FlagState.defended);
+
+        warInfo.setCurrentFlagState(FlagState.extinct);
         warInfo.setCurrentRunnable(null);
         new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.unWarStateTown, FlagWarConfig.getSecondsOfInvincibility()*20L, warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
         Bukkit.getServer().getPluginManager().callEvent(new WarEndEvent(warInfo.getAttackedTown(), warInfo.getAttackingNation(), warInfo.getDefendingNation(), WarEndEvent.WarEndReason.timerRanOut));
@@ -237,7 +237,7 @@ public class WarManager {
     {
         warInfo.getCurrentRunnable().cancel();
 
-        warInfo.setCurrentFlagState(WarInfo.FlagState.flag);
+        warInfo.setCurrentFlagState(FlagState.flag);
         warInfo.setCurrentRunnable(new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.endWarDueToTimeUp, FlagWarConfig.getSecondsOfFlag()*20L, warInfo.getAttackedTown().getWorld().getUID(), new String[] {warInfo.getAttackedTown().getName()}));
 
         Bukkit.getServer().getPluginManager().callEvent(new EligibleToFlagEvent(warInfo.getAttackedTown(), warInfo.getAttackingNation(), warInfo.getDefendingNation()));
@@ -257,26 +257,36 @@ public class WarManager {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
         pasteChunk.initiatePaste(warInfo.getStorableTownBlocks(), FlagWarConfig.getChunkPasteBatchSize(), attackedTown.getWorld());
         war_infos.remove(warInfo.getAttackedTown().getUUID());
     }
 
     public void addFlagToWar(WarInfo warInfo, FlagInfo flagInfo) {
         warInfo.getCurrentFlags().add(flagInfo);
+        hologramManager.createHologramOfFlag(flagInfo);
     }
 
     public void removeFlagFromWar(WarInfo warInfo, String flagPlacer) {
-        warInfo.getCurrentFlags().removeIf(item -> item.getAttackData().getNameOfFlagOwner().equalsIgnoreCase(flagPlacer));
+
+        warInfo.getCurrentFlags().removeIf(flagInfo -> flagInfo.getFlagPlacer().getName().equalsIgnoreCase(flagPlacer));
+        hologramManager.removeHologramOfFlag(TownyAPI.getInstance().getResident(flagPlacer));
     }
 
     public boolean isEligibleToFlag(Town town)
     {
-        return (hasActiveWar(town) && getWarInfoOrNull(town).getCurrentFlagState().equals(WarInfo.FlagState.flag));
+        return (hasActiveWar(town) && getWarInfoOrNull(town).getCurrentFlagState().equals(FlagState.flag));
     }
 
     public boolean hasActiveWar(Town town) {
         return getWarInfoOrNull(town) != null;
     }
+
+    public void getTownOutOfRuinedState(WarInfo warInfo)
+    {
+        TownRuinUtil.reclaimTown(warInfo.getInitialMayor(), warInfo.getAttackedTown());
+    }
+
 
     public boolean hasActiveWar(String townName) {
         return getWarInfoOrNull(townName) != null;
@@ -290,7 +300,9 @@ public class WarManager {
     {
         currentFlag.setPotentialExtraLives(currentFlag.getPotentialExtraLives()-1);
         currentFlag.setActualExtraLives(currentFlag.getActualExtraLives()+1);
-        currentFlag.setExtraTicks(currentFlag.getExtraTicks()+extraTimeTicks);
+        currentFlag.addExtraTicks(extraTimeTicks);
+
+        hologramManager.updateFlagLives(currentFlag);
     }
 
     private void transferOwnershipBack(final Town attackedTown, final Collection<TownBlock> townBlocks) {
@@ -307,4 +319,23 @@ public class WarManager {
         }
     }
 
+    public boolean cannotFlagRightNow(Resident flagPlacer)
+    {
+        if (flagPlacer == null) return false;
+        for (var warInfo : war_infos.values())
+            for (var flagInfo : warInfo.getCurrentFlags())
+                if (flagPlacer.equals(flagInfo.getFlagPlacer()))
+                    return true;
+        return false;
+    }
+
+    public boolean cannotFlagRightNow(TownBlock tb)
+    {
+        if (tb == null) return false;
+        for (var warInfo : war_infos.values())
+            for (var flagInfo : warInfo.getCurrentFlags())
+                if (tb.equals(flagInfo.getTownBlock()))
+                    return true;
+        return false;
+    }
 }

@@ -261,6 +261,10 @@ public class CellUnderAttack extends Cell {
      */
     public void updateFlag() {
         Material[] timer = FlagWarConfig.getTimerBlocks();
+
+        if (underExtraTime)
+            flagPhaseID=timer.length-1;
+
         if (!hasEnded()) {
             Collection<FlagInfo> currentFlags = warManager.getWarInfoOrNull(TownyAPI.getInstance().getTown(flagBaseBlock.getLocation())).getCurrentFlags();
 

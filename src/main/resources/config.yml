@@ -93,6 +93,8 @@ timer_blocks:
     use_default: true
     # Will set the timer blocks. Each entry is allotted an equal amount of time.
     # Use multiple entries to achieve more granularity. Case-insensitive.
+
+    # If you are to change this, and you are using the HologramManager (which uses DecentHolograms), you should consider changing the hard-coded values there too.
     blocks:
         - lime_terracotta
         - green_terracotta

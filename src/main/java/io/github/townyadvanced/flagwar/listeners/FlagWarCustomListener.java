@@ -191,12 +191,16 @@ public class FlagWarCustomListener implements Listener {
                 }
             }
 
-            // Defender loses townblock
-            transferOrUnclaimOrKeepTownblock(attackingTown, townBlock, defendingTown);
-
             // checks if this is the homeblock.
             WarManager warManager = JavaPlugin.getPlugin(FlagWar.class).getWarManager();
-            if (townBlock.isHomeBlock()) warManager.loseDefense(warManager.getWarInfoOrNull(townBlock.getTown()));
+            if (townBlock.isHomeBlock())
+            {
+                warManager.loseDefense(warManager.getWarInfoOrNull(townBlock.getTown()));
+                townBlock.getTownOrNull().setHomeBlock(townBlock);
+            }
+            // Defender loses townblock
+            else
+                transferOrUnclaimOrKeepTownblock(attackingTown, townBlock, defendingTown);
 
             // Cleanup
             towny.updateCache(worldCoord);
