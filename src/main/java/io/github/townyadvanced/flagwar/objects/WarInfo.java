@@ -3,6 +3,7 @@ package io.github.townyadvanced.flagwar.objects;
 import com.palmergames.bukkit.towny.object.Nation;
 import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
+import io.github.townyadvanced.flagwar.FlagWar;
 import io.github.townyadvanced.flagwar.events.WarEndEvent;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -33,6 +34,8 @@ public class WarInfo {
         activeFlags = new ArrayList<>();
         this.currentRunnable = currentRunnable;
         this.storableTownBlocks = chunkCoordPairs;
+        JavaPlugin.getPlugin(FlagWar.class).getBossBarListener().createBossBar(attackedTown);
+
     }
 
     public WarInfo(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, FlagState flagState, PersistentRunnable currentRunnable, boolean writeToYML) {
@@ -59,12 +62,14 @@ public class WarInfo {
                 warInfoConfig.set(key + ".flagState", flagState.toString());
                 warInfoConfig.set(key + ".currentRunnable", currentRunnable.getPathAsString());
                 warInfoConfig.set(key + ".townBlocks", ChunkCoordPair.getStringCoordsOfCollection(",", ";", storableTownBlocks));
-
                 warInfoConfig.save(warInfoFile);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
+         JavaPlugin.getPlugin(FlagWar.class).getBossBarListener().createBossBar(attackedTown);
+
+
     }
 
     public Resident getInitialMayor() {return initialMayor;}
@@ -76,9 +81,8 @@ public class WarInfo {
     public PersistentRunnable getCurrentRunnable() {return this.currentRunnable;}
     public void setWarEndReason(WarEndEvent.WarEndReason warEndReason) {this.warEndReason = warEndReason;}
     public WarEndEvent.WarEndReason getWarEndReason() {return warEndReason;}
-
-    public void setCurrentRunnable(PersistentRunnable currentRunnable)
-    {
+    public int getStateTimeLeft() {return getCurrentRunnable().getTimeLeft();}
+    public void setCurrentRunnable(PersistentRunnable currentRunnable) {
         this.currentRunnable = currentRunnable;
         File warInfos = new File(JavaPlugin.getProvidingPlugin(this.getClass()).getDataFolder(), "ActiveWars.yml");
         if (warInfos.exists())
@@ -96,8 +100,7 @@ public class WarInfo {
     }
     public Collection<ChunkCoordPair> getStorableTownBlocks() {return storableTownBlocks;}
 
-    public void setCurrentFlagState(FlagState currentFlagState)
-    {
+    public void setCurrentFlagState(FlagState currentFlagState) {
         this.currentFlagState = currentFlagState;
         File warInfos = new File(JavaPlugin.getProvidingPlugin(this.getClass()).getDataFolder(), "ActiveWars.yml");
         if (warInfos.exists())

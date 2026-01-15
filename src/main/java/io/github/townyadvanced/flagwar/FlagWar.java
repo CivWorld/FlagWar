@@ -70,7 +70,6 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitScheduler;
 
 /**
  * The main class of the TownyAdvanced: FlagWar addon. Houses core functionality.
@@ -120,8 +119,11 @@ public class FlagWar extends JavaPlugin {
     private WarListener warListener;
     /** Holds instance of the {@link WarManager}. */
     private static WarManager warManager;
-    /** Holds instance of the {@link WarManager}. */
+    /** Holds instance of the {@link HologramManager}. */
     private static HologramManager hologramManager;
+    /** Holds instance of the {@link BossBarListener}. */
+    private static BossBarListener bossBarlistener;
+
 
 
     /**
@@ -147,8 +149,6 @@ public class FlagWar extends JavaPlugin {
         brandingMessage();
         checkTowny();
 
-        /* warManager initialization MUST be before initializeListeners()
-        or it will initialize the listeners with a null warManager. */
         hologramManager = new HologramManager();
         warManager = new WarManager(getHologramManager());
         initializeListeners();
@@ -165,10 +165,10 @@ public class FlagWar extends JavaPlugin {
     public HologramManager getHologramManager() {
         return hologramManager;
     }
-
-    public WarManager getWarManager() {
-        return warManager;
+    public BossBarListener getBossBarListener() {
+        return bossBarlistener;
     }
+    public WarManager getWarManager() {return warManager;}
 
     /**
      * Used to load and reload the config.yml.
@@ -261,6 +261,7 @@ public class FlagWar extends JavaPlugin {
         PLUGIN_MANAGER.registerEvents(warzoneListener, this);
         PLUGIN_MANAGER.registerEvents(outlawListener, this);
         PLUGIN_MANAGER.registerEvents(warListener, this);
+        PLUGIN_MANAGER.registerEvents(bossBarlistener, this);
         FW_LOGGER.log(Level.INFO, () -> Translate.from("startup.events.registered"));
     }
 
@@ -273,6 +274,7 @@ public class FlagWar extends JavaPlugin {
         warzoneListener = new WarzoneListener();
         outlawListener = new OutlawListener();
         warListener = new WarListener(warManager, hologramManager);
+        bossBarlistener = new BossBarListener(plugin);
         FW_LOGGER.log(Level.INFO, () -> Translate.from("startup.listeners.initialized"));
     }
 

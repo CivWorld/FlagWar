@@ -208,6 +208,9 @@ battle_timings:
     # How long a remark, such as that of destroying a forcefield, lasts as a holographic display above the flag.
     seconds_hologram_remark_time: 3
 
+    # The time between any boss bar updates.
+    seconds_per_boss_bar_update: 10
+
 chunk_manipulation:
     # Unless you absolutely know what you're doing, it is recommended to keep these values as they are.
 

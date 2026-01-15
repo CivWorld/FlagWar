@@ -664,4 +664,9 @@ public final class FlagWarConfig {
     {
         return PLUGIN.getConfig().getInt("chunk_manipulation.chunks_pasted_per_tick");
     }
+
+    public static int getSecondsPerBossBarUpdate()
+    {
+        return PLUGIN.getConfig().getInt("battle_timings.seconds_per_boss_bar_update");
+    }
 }

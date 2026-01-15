@@ -26,7 +26,6 @@ import com.palmergames.bukkit.towny.utils.TownRuinUtil;
 import io.github.townyadvanced.flagwar.chunkManipulation.CopyChunk;
 import io.github.townyadvanced.flagwar.chunkManipulation.PasteChunk;
 import io.github.townyadvanced.flagwar.config.FlagWarConfig;
-import io.github.townyadvanced.flagwar.events.CellWonEvent;
 import io.github.townyadvanced.flagwar.events.EligibleToFlagEvent;
 import io.github.townyadvanced.flagwar.events.WarEndEvent;
 import io.github.townyadvanced.flagwar.events.WarStartEvent;
@@ -44,7 +43,7 @@ import java.io.IOException;
 import java.util.*;
 
 
-// WE MIGHT NEED TO SPLIT THIS WARMANAGER INTO A FLAGMANAGER AND A WARMANAGER.
+// WE MIGHT NEED TO SPLIT THIS WARMANAGER INTO A WARAPI AND A WARMANAGER.
 
 
 public class WarManager {
@@ -61,15 +60,21 @@ public class WarManager {
         if (!runnablesFolder.exists())
             runnablesFolder.mkdirs();
 
-        File[] runnables = runnablesFolder.listFiles();
+        final File[][] runnables = {runnablesFolder.listFiles()};
 
-        if (runnables == null || runnables.length == 0) {
+        if (runnables[0] == null || runnables[0].length == 0) {
             System.out.println("runnables file is empty or null, implying no active wars or processes present.");
             return;
         }
-        runnables = populateWarInfosMap(runnables);
+        new BukkitRunnable()
+        {
+            public void run()
+            {
+                runnables[0] = populateWarInfosMap(runnables[0]);
+            }
+        }.runTaskLater(plugin, 1);
 
-        for (var runnable : runnables)
+        for (var runnable : runnables[0])
             if (runnable != null)
                 new PersistentRunnable(runnable.getPath());
     }
@@ -180,9 +185,7 @@ public class WarManager {
         war_infos.put(key, warInfo);
     }
 
-    public HashMap<UUID, WarInfo> getWarInfos() {
-        return war_infos;
-    }
+    public HashMap<UUID, WarInfo> getWarInfos() {return war_infos;}
 
     public void endWar(WarInfo warInfo)
     {
@@ -231,8 +234,8 @@ public class WarManager {
 
         warInfo.setCurrentFlagState(FlagState.extinct);
         warInfo.setCurrentRunnable(null);
-        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.unWarStateTown, FlagWarConfig.getSecondsOfInvincibility()*20L, warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
         Bukkit.getServer().getPluginManager().callEvent(new WarEndEvent(warInfo.getAttackedTown(), warInfo.getAttackingNation(), warInfo.getDefendingNation(), WarEndEvent.WarEndReason.timerRanOut));
+        new PersistentRunnable(PersistentRunnable.PersistentRunnableAction.unWarStateTown, FlagWarConfig.getSecondsOfInvincibility()*20L, warInfo.getAttackedTown().getWorld().getUID(), new String[]{warInfo.getAttackedTown().getName()});
     }
 
     public void makeEligibleToFlag(WarInfo warInfo)
@@ -339,6 +342,22 @@ public class WarManager {
             for (var flagInfo : warInfo.getCurrentFlags())
                 if (tb.equals(flagInfo.getTownBlock()))
                     return true;
+        return false;
+    }
+
+    public boolean isAssociatedWithWar(Resident resident, Town town)
+    {
+        if (resident == null || town == null) return false;
+        WarInfo wi = getWarInfoOrNull(town);
+        if (wi == null) return false;
+        List<Nation> relevantNations = new ArrayList<>(List.of(wi.getAttackingNation(), wi.getDefendingNation()));
+
+        relevantNations.addAll(wi.getAttackingNation().getAllies());
+        relevantNations.addAll(wi.getDefendingNation().getAllies());
+
+        for (Nation n : relevantNations)
+            if (resident.getNationOrNull().equals(n)) return true;
+
         return false;
     }
 }

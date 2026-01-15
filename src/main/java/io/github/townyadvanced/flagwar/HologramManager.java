@@ -78,8 +78,7 @@ public class HologramManager {
         updateTimeLeft(currentFlag);
     }
 
-    void updateTimeLeft(FlagInfo currentFlag)
-    {
+    void updateTimeLeft(FlagInfo currentFlag) {
         ChatColor color = switch (currentFlag.getFlagBlock().getType()) {
             case LIME_WOOL -> ChatColor.GREEN;
             case GREEN_WOOL -> ChatColor.DARK_GREEN;
@@ -98,8 +97,7 @@ public class HologramManager {
         DHAPI.setHologramLine(h, 0, ""+ color + currentFlag.getSecondsLeft() + ChatColor.YELLOW + " seconds left!");
     }
 
-    public void makeRemark(ChatColor color, String remark, FlagInfo currentFlag)
-    {
+    public void makeRemark(ChatColor color, String remark, FlagInfo currentFlag) {
         Hologram h = holograms.get(currentFlag.getFlagPlacer().getUUID());
         DHAPI.setHologramLine(h, 2, (color + "" + ChatColor.BOLD + remark));
 

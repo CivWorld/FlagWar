@@ -43,6 +43,7 @@ public class PersistentRunnable {
     UUID worldID;
     String[] arguments;
     int taskID;
+    int[] timeLeft = new int[1];
 
     public PersistentRunnable(PersistentRunnableAction action, long duration, UUID worldID, String[] arguments) {
 
@@ -63,15 +64,12 @@ public class PersistentRunnable {
             w.write(worldID.toString());
             w.newLine();
             w.write(String.join(":", arguments));
-
-            w.close();
-            run(arguments, executionTime - (Bukkit.getServer().getWorld(worldID).getGameTime()), action, Path.of((plugin.getDataFolder() + "/runnables/" + action + "_" + executionTime))
-            );
-
+            w.newLine();
         } catch (IOException e) {
             System.out.println("An error occurred writing to the file");
             e.printStackTrace();
         }
+        finishConstructor();
     }
 
     public PersistentRunnable(String path) {
@@ -90,17 +88,32 @@ public class PersistentRunnable {
             this.action = PersistentRunnableAction.valueOf(r.readLine());
             this.worldID = UUID.fromString(r.readLine());
             this.arguments = (r.readLine()).split(":");
-
-            r.close();
-
-            run(arguments, executionTime - (Bukkit.getServer().getWorld(worldID).getGameTime()), action, Path.of(path));
         } catch (IOException e) {
             e.printStackTrace();
         }
+        finishConstructor();
 
     }
 
+    private void finishConstructor() {
+        new BukkitRunnable() {
+
+            @Override
+            public void run()
+            {
+                if (--timeLeft[0] <= 0) cancel();
+            }
+
+        }.runTaskTimer(plugin, 0, 20);
+
+        try{run(arguments, executionTime - (Bukkit.getServer().getWorld(worldID).getGameTime()), action, Path.of((plugin.getDataFolder() + "/runnables/" + action + "_" + executionTime)));}
+        catch(IOException e) {throw  new RuntimeException(e);}
+
+        timeLeft[0] = Math.toIntExact((executionTime - Bukkit.getServer().getWorld(worldID).getGameTime()) / 20);
+    }
+
     public String getPathAsString() {return path;}
+    public int getTimeLeft() {return timeLeft[0];}
 
     public void cancel()
     {
