@@ -364,4 +364,19 @@ public class WarManager {
         return false;
 
     }
+
+    public boolean isAssociatedWithDefender(Resident r, Town town) {
+        if (r == null || town == null) return false;
+        WarInfo wi = getWarInfoOrNull(town);
+        if (wi == null) return false;
+
+        List<Nation> relevantNations = new ArrayList<>(List.of(wi.getDefendingNation()));
+        relevantNations.addAll(wi.getDefendingNation().getAllies());
+
+        for (Nation n : relevantNations)
+            if (r.getNationOrNull().equals(n)) return true;
+
+        return false;
+
+    }
 }
