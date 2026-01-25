@@ -22,9 +22,10 @@ public class WarInfo {
     private FlagState currentFlagState;
     private PersistentRunnable currentRunnable;
     private final Collection<ChunkCoordPair> storableTownBlocks;
+    private final String homeBlockCoordinates;
     private WarEndEvent.WarEndReason warEndReason; // if null, the war hasn't ended yet.
 
-    public WarInfo(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, FlagState flagState, PersistentRunnable currentRunnable, Collection<ChunkCoordPair> chunkCoordPairs)
+    public WarInfo(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, FlagState flagState, PersistentRunnable currentRunnable, Collection<ChunkCoordPair> chunkCoordPairs, String homeBlockCoordinates)
     {
         this.attackedTown = attackedTown;
         this.attackingNation = attackingNation;
@@ -34,11 +35,12 @@ public class WarInfo {
         activeFlags = new ArrayList<>();
         this.currentRunnable = currentRunnable;
         this.storableTownBlocks = chunkCoordPairs;
+        this.homeBlockCoordinates = homeBlockCoordinates;
         JavaPlugin.getPlugin(FlagWar.class).getBossBarListener().createBossBar(attackedTown);
 
     }
 
-    public WarInfo(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, FlagState flagState, PersistentRunnable currentRunnable, boolean writeToYML) {
+    public WarInfo(Town attackedTown, Nation attackingNation, Nation defendingNation, Resident initialMayor, FlagState flagState, PersistentRunnable currentRunnable, String homeBlockCoordinates, boolean writeToYML) {
         this.attackedTown = attackedTown;
         this.attackingNation = attackingNation;
         this.defendingNation = defendingNation;
@@ -47,6 +49,7 @@ public class WarInfo {
         activeFlags = new ArrayList<>();
         this.currentRunnable = currentRunnable;
         this.storableTownBlocks = ChunkCoordPair.of(attackedTown.getTownBlocks());
+        this.homeBlockCoordinates = homeBlockCoordinates;
 
         if (writeToYML)
         {
@@ -62,6 +65,7 @@ public class WarInfo {
                 warInfoConfig.set(key + ".flagState", flagState.toString());
                 warInfoConfig.set(key + ".currentRunnable", currentRunnable.getPathAsString());
                 warInfoConfig.set(key + ".townBlocks", ChunkCoordPair.getStringCoordsOfCollection(",", ";", storableTownBlocks));
+                if (attackedTown.getHomeBlockOrNull() != null) warInfoConfig.set(key + ".homeBlockCoordinates", (attackedTown.getHomeBlockOrNull().getX() + "," + attackedTown.getHomeBlockOrNull().getZ()));
                 warInfoConfig.save(warInfoFile);
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -99,6 +103,7 @@ public class WarInfo {
 
     }
     public Collection<ChunkCoordPair> getStorableTownBlocks() {return storableTownBlocks;}
+    public String getHomeBlockCoordinates() {return homeBlockCoordinates;}
 
     public void setCurrentFlagState(FlagState currentFlagState) {
         this.currentFlagState = currentFlagState;
