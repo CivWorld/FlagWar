@@ -25,6 +25,7 @@ import io.github.townyadvanced.flagwar.chunkManipulation.PasteChunk;
 import io.github.townyadvanced.flagwar.config.FlagWarConfig;
 import io.github.townyadvanced.flagwar.events.EligibleToFlagEvent;
 import io.github.townyadvanced.flagwar.events.WarEndEvent;
+import io.github.townyadvanced.flagwar.events.WarResumeEvent;
 import io.github.townyadvanced.flagwar.events.WarStartEvent;
 import io.github.townyadvanced.flagwar.objects.*;
 import org.bukkit.Bukkit;
@@ -103,6 +104,8 @@ public class WarManager {
             for (int i = 0; i < runnables.length; i++)
                 if (runnables[i].getPath().equalsIgnoreCase(currentRunnable))
                     runnables[i] = null;
+
+            Bukkit.getPluginManager().callEvent(new WarResumeEvent(attackedTown, attackingNation, defendingNation));
         }
         return runnables;
     }
