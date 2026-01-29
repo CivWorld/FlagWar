@@ -88,6 +88,9 @@ public class FlagWarBlockListener implements Listener {
             || !e.getTownBlock().getTownOrNull().isAllowedToWar()
             || !FlagWarConfig.isAllowingAttacks()
             || !Tag.BANNERS.isTagged(e.getBlock().getType())
+            || enemy == null
+            || enemy.getTownOrNull() == null
+            || enemy.getTownOrNull().getNation() == null
             || !(enemy.getTownOrNull().getNationOrNull().getEnemies().contains(attackedTown.getNationOrNull()))
             || warManager.hasActiveWar(attackedTown)
             || attackedTown.hasActiveWar()
@@ -100,8 +103,6 @@ public class FlagWarBlockListener implements Listener {
         e.setCancelled(false);
         warManager.startWar(attackedTown, enemy.getNationOrNull(), attackedTown.getNationOrNull(), attackedTown.getMayor(), FlagState.preFlag, true);
     }
-
-
 
     /**
      * Check if the {@link Player} from {@link TownyBuildEvent#getPlayer()} is attempting to build inside enemy lands,

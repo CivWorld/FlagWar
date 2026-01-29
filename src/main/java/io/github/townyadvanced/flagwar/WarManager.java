@@ -347,7 +347,8 @@ public class WarManager {
     }
 
     public boolean isAssociatedWithAttacker(Resident r, Town t) {
-        if (r == null || t == null || r.getNationOrNull() == null) return false;
+        if (r == null || t == null || r.getTownOrNull() == null|| r.getTownOrNull().getNationOrNull() == null) return false;
+        Nation thisNation =  r.getTownOrNull().getNationOrNull();
         WarInfo wi = getWarInfoOrNull(t);
         if (wi == null) return false;
 
@@ -355,7 +356,7 @@ public class WarManager {
         relevantNations.addAll(wi.getAttackingNation().getAllies());
 
         for (Nation n : relevantNations)
-            if (n != null && r.getNationOrNull().equals(n)) return true;
+            if (thisNation.equals(n)) return true;
 
 
         return false;
@@ -363,14 +364,15 @@ public class WarManager {
     }
 
     public boolean isAssociatedWithDefender(Resident r, Town t) {
-        if (r == null || t == null || r.getNationOrNull() == null) return false;
+        if (r == null || t == null || r.getTownOrNull() == null|| r.getTownOrNull().getNationOrNull() == null) return false;
+        Nation thisNation =  r.getTownOrNull().getNationOrNull();
         WarInfo wi = getWarInfoOrNull(t);
         if (wi == null) return false;
 
         List<Nation> relevantNations = new ArrayList<>(List.of(wi.getDefendingNation()));
         relevantNations.addAll(wi.getDefendingNation().getAllies());
         for (Nation n : relevantNations)
-            if (r.getNationOrNull().equals(n)) return true;
+            if (thisNation.equals(n)) return true;
 
         return false;
 

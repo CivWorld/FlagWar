@@ -207,6 +207,8 @@ public class FlagWar extends JavaPlugin {
         } catch (NullPointerException npe) {
             npe.printStackTrace();
         }
+
+        bossBarlistener.deleteBossBars();
     }
 
     private void setLocale() {

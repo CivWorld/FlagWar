@@ -107,10 +107,11 @@ public class BossBarListener implements Listener
             logger.warning("[WAR] " + TownyAPI.getInstance().getTown(id) + " has no WarInfo!");
             return;
         }
+
         switch (info.getCurrentFlagState())
         {
-            case preFlag: bar.setProgress((double) info.getStateTimeLeft() / FlagWarConfig.getSecondsOfPreFlag()); break;
-            case flag: bar.setProgress((double) info.getStateTimeLeft() / FlagWarConfig.getSecondsOfFlag()); break;
+            case preFlag: bar.setProgress(1.0 - ((double) info.getStateTimeLeft() / FlagWarConfig.getSecondsOfPreFlag())); break;
+            case flag: bar.setProgress(1.0 - ((double) info.getStateTimeLeft() / FlagWarConfig.getSecondsOfFlag())); break;
         }
 
         for (Player player : Bukkit.getOnlinePlayers())
@@ -122,5 +123,11 @@ public class BossBarListener implements Listener
 
         String state = info.getCurrentFlagState().toString().toUpperCase();
         bar.setTitle("[WAR] " + info.getAttackedTown().getName() + " - " + state);
+    }
+
+    public void deleteBossBars()
+    {
+        for (var bossBar : bossBars.values())
+            bossBar.removeAll();
     }
 }
