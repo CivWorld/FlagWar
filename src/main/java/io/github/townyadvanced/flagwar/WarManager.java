@@ -43,7 +43,6 @@ import java.util.*;
 
 // WE MIGHT NEED TO SPLIT THIS WARMANAGER INTO A WARAPI AND A WARMANAGER.
 
-
 public class WarManager {
     static Plugin plugin = FlagWar.getInstance();
     HashMap<UUID, WarInfo> war_infos = new HashMap<>();
@@ -379,5 +378,13 @@ public class WarManager {
 
         return false;
 
+    }
+
+    public boolean isBeingFought(Town t) {
+        WarInfo wi = getWarInfoOrNull(t);
+        if (wi == null) return false;
+        FlagState state = wi.getCurrentFlagState();
+
+        return state == FlagState.flag || state == FlagState.preFlag;
     }
 }
