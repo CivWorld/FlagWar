@@ -31,7 +31,7 @@ public class PasteChunk {
         initialChunksToPaste = CCPs.size();
         for (var ccp : CCPs)
             globalCCPs.push(ccp);
-        townName = TownyAPI.getInstance().getTownName(new Location(world, globalCCPs.peek().getX()*16, 0, globalCCPs.peek().getZ()*16));
+        townName = TownyAPI.getInstance().getTownName(new Location(world, globalCCPs.peek().getX()*16d, 0, globalCCPs.peek().getZ()*16d));
 
         this.sizeOfBatch = sizeOfBatch;
         // there can always be one batch of 0.
@@ -40,8 +40,7 @@ public class PasteChunk {
         processNextBatch(world);
     }
 
-    void processNextBatch(World world)
-    {
+    private void processNextBatch(World world) {
         if (batchesLeft == 0)
         {
             Bukkit.getServer().broadcastMessage(ChatColor.BLUE + "[" + ChatColor.YELLOW + "FLAGWAR" + ChatColor.BLUE + "] " + ChatColor.WHITE + townName + " has been restored!");
@@ -59,8 +58,7 @@ public class PasteChunk {
         readChunks(world, CCPSection);
     }
 
-
-    void readChunks(World world, Stack<ChunkCoordPair> CCPs) {
+    private void readChunks(World world, Stack<ChunkCoordPair> CCPs) {
 
         Stack<PendingChunk> pendingChunks = new Stack<>();
 
@@ -88,9 +86,6 @@ public class PasteChunk {
 
                             pendingChunks.push(pendingChunk);
 
-                            ois.close();
-                            fis.close();
-
                             Files.deleteIfExists(Path.of(chunkFile.getPath()));
 
                         } catch (IOException | ClassNotFoundException e) {
@@ -114,7 +109,7 @@ public class PasteChunk {
         }.runTaskTimer(plugin, 5, 2);
     }
 
-    void pasteChunks(World world, Stack<PendingChunk> pendingChunks) {
+    private void pasteChunks(World world, Stack<PendingChunk> pendingChunks) {
         new BukkitRunnable() {
             @Override
             public void run() {

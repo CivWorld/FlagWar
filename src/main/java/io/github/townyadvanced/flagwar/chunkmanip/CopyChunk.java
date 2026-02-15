@@ -1,6 +1,5 @@
 package io.github.townyadvanced.flagwar.chunkManipulation;
 
-import com.palmergames.bukkit.towny.object.Town;
 import com.palmergames.bukkit.towny.object.TownBlock;
 import org.bukkit.*;
 import org.bukkit.block.data.*;
